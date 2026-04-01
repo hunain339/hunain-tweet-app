@@ -1,0 +1,166 @@
+:root {
+    --primary: #f97316;
+    --primary-hover: #ea580c;
+    --bg-dark: #0f172a;
+    --surface: rgba(30, 41, 59, 0.7);
+    --surface-solid: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(12px);
+    --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4, .navbar-brand {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+}
+
+/* Glassmorphism Navbar */
+.navbar-glass {
+    background: rgba(15, 23, 42, 0.8) !important;
+    backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 0;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    color: var(--primary) !important;
+    letter-spacing: -1px;
+}
+
+.nav-link {
+    color: var(--text-main) !important;
+    font-weight: 500;
+    transition: var(--transition-base);
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--primary) !important;
+}
+
+/* Premium Tweet Card */
+.tweet-card {
+    background: var(--surface);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    transition: var(--transition-base);
+    overflow: hidden;
+}
+
+.tweet-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(249, 115, 22, 0.3);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.card-image-container {
+    height: 240px;
+    overflow: hidden;
+    position: relative;
+}
+
+.card-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: var(--transition-base);
+}
+
+.tweet-card:hover .card-image-container img {
+    transform: scale(1.05);
+}
+
+/* Interaction Buttons */
+.interaction-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-radius: 50px;
+    transition: var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    text-decoration: none !important;
+}
+
+.interaction-btn:hover {
+    background: rgba(249, 115, 22, 0.1);
+    color: var(--primary);
+}
+
+.btn-primary-custom {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: var(--transition-base);
+}
+
+.btn-primary-custom:hover {
+    background-color: var(--primary-hover);
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+}
+
+/* Form Styles */
+.form-control-custom {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text-main);
+    transition: var(--transition-base);
+}
+
+.form-control-custom:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15);
+    outline: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--surface-solid);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.6s ease forwards;
+}

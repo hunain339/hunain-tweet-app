@@ -1,0 +1,47 @@
+{% extends 'layout.html' %}
+
+{% block title %}
+{% if form.instance.pk %}Edit Tweet{% else %}Create New Tweet{% endif %} | Tweetbar
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-6">
+        <div class="tweet-card p-4 p-md-5">
+            <h2 class="fw-bold mb-4">
+                {% if form.instance.pk %}Edit Tweet{% else %}New Tweet{% endif %}
+            </h2>
+            
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                {% for field in form %}
+                <div class="mb-4">
+                    <label class="form-label text-muted small text-uppercase tracking-wider fw-bold">
+                        {{ field.label }}
+                    </label>
+                    {{ field }}
+                    {% if field.errors %}
+                        {% for error in field.errors %}
+                            <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    {% if field.help_text %}
+                        <div class="text-muted small mt-1">{{ field.help_text }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="d-grid gap-3 mt-5">
+                    <button class="btn btn-primary-custom py-3" type="submit">
+                        {% if form.instance.pk %}Update Tweet{% else %}Post Tweet{% endif %}
+                    </button>
+                    <a href="{% url 'tweet_list' %}" class="btn btn-link text-muted text-decoration-none text-center">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
