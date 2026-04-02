@@ -15,7 +15,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-qcx_owwl%sp%=)k&=q+4(^a^gk##*@knzpuk8w1#u%$j5uq^n=')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')]
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'hunain-tweet-app.vercel.app',
+    '.vercel.app',
+]
 
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
@@ -119,9 +124,12 @@ LOGOUT_REDIRECT_URL = '/tweet/'
 
 # Production Security Settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = False  # Vercel handles SSL redirect
-    SESSION_COOKIE_SECURE = False  # Allow HTTP during Vercel deployment
-    CSRF_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = True  # Vercel handles SSL redirect
+    SESSION_COOKIE_SECURE = True  # Only send over HTTPS
+    CSRF_COOKIE_SECURE = True  # Only send over HTTPS
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
