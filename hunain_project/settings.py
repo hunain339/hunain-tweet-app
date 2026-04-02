@@ -17,6 +17,15 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-qcx_owwl%sp%=)k&=q+4(
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = [host.strip() for host in config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')]
 
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.vercel.app',
+    'https://hunain-tweet-app.vercel.app',
+    'http://localhost:8000',
+]
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -110,9 +119,9 @@ LOGOUT_REDIRECT_URL = '/tweet/'
 
 # Production Security Settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = False  # Vercel handles SSL redirect
+    SESSION_COOKIE_SECURE = False  # Allow HTTP during Vercel deployment
+    CSRF_COOKIE_SECURE = False
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
