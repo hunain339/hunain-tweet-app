@@ -39,3 +39,20 @@ Thumbs.db
 
 # Media (user-uploaded content)
 media/
+
+# Vercel
+.vercel/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Node (if using any frontend tools)
+node_modules/
+npm-debug.log
+
+# Temporary files
+*.tmp
+*.temp
+~*
