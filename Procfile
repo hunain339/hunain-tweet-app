@@ -1,0 +1,1 @@
+web: gunicorn hunain_project.wsgi
