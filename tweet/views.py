@@ -11,7 +11,7 @@ from django.core.paginator import Paginator
 
 
 def index(request):
-    return render(request, 'index.html')
+    return redirect('tweet_list')
 
 
 def tweet_list(request):
