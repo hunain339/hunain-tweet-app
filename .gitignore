@@ -4,6 +4,11 @@ venv/
 env/
 sandbox_venv/
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 # Database
 *.sqlite3
 *.db
