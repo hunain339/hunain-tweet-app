@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="row justify-content-center fade-in">
-    <div class="col-md-5 col-lg-4">
+    <div class="col-md-6 col-lg-5">
         <div class="tweet-card p-4 p-md-5">
             <div class="text-center mb-5">
                 <div class="bg-primary bg-opacity-20 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
@@ -12,8 +12,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
                     </svg>
                 </div>
-                <h2 class="display-6 fw-bold mb-2">Welcome Back</h2>
-                <p class="text-muted">Sign in to continue your journey.</p>
+                <h2 class="display-6 fw-bold mb-3">Welcome Back</h2>
+                <p class="text-muted fs-5">Sign in to continue your journey.</p>
             </div>
             
             <form method="post" action="{% url 'login' %}">
@@ -26,19 +26,19 @@
                 {% endif %}
 
                 <div class="mb-4">
-                    <label class="form-label text-muted small text-uppercase tracking-wider fw-bold">Username</label>
-                    <input type="text" name="username" class="form-control form-control-custom" placeholder="Your username" required>
+                    <label class="form-label-premium">Username</label>
+                    <input type="text" name="username" class="form-control form-control-custom" placeholder="Enter username" required>
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label text-muted small text-uppercase tracking-wider fw-bold">Password</label>
-                    <input type="password" name="password" class="form-control form-control-custom" placeholder="Your password" required>
+                    <label class="form-label-premium">Password</label>
+                    <input type="password" name="password" class="form-control form-control-custom" placeholder="Enter password" required>
                 </div>
 
                 <div class="d-grid gap-3 mt-5">
-                    <button type="submit" class="btn btn-primary-custom py-3">Log In</button>
-                    <div class="text-center mt-3 pt-4 border-top" style="border-color: rgba(255,255,255,0.05) !important;">
-                        <p class="mb-0 text-muted">Don't have an account? <a href="{% url 'register' %}" class="text-primary text-decoration-none fw-bold">Sign up now</a></p>
+                    <button type="submit" class="btn btn-primary-custom py-3 fs-5">Log In</button>
+                    <div class="text-center mt-3 pt-4 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
+                        <p class="mb-0 text-muted">New to Tweetbar? <a href="{% url 'register' %}" class="text-primary text-decoration-none fw-bold">Create account</a></p>
                     </div>
                 </div>
             </form>

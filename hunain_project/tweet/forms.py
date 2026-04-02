@@ -19,8 +19,11 @@ class UserRegistrationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs.update({'class': 'form-control form-control-custom'})
+        for field_name, field in self.fields.items():
+            field.widget.attrs.update({'class': 'form-control form-control-custom', 'placeholder': field.label})
+            # Simplify or clarify help text if it's too long
+            if field.help_text and 'password' in field_name.lower():
+                field.help_text = "Standard password requirements apply."
 
     class Meta(UserCreationForm.Meta):
         model = User

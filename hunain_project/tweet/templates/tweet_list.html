@@ -20,10 +20,10 @@ Explore Feed | Tweetbar
     </div>
 </div>
 
-<div class="row g-4">
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% for tweet in tweets %}
-    <div class="col-12 col-md-6 col-lg-4">
-        <article class="tweet-card h-100 d-flex flex-column fade-in">
+    <div class="col">
+        <article class="tweet-card h-100 d-flex flex-column">
             <!-- Image (Optional) -->
             {% if tweet.photo %}
             <div class="card-image-container">
@@ -70,9 +70,17 @@ Explore Feed | Tweetbar
                         </div>
                         
                         {% if tweet.user == request.user %}
-                        <div class="ms-auto d-flex gap-1">
-                            <a href="{% url 'tweet_edit' tweet.id %}" class="btn btn-link btn-sm text-muted text-decoration-none px-2">Edit</a>
-                            <a href="{% url 'tweet_delete' tweet.id %}" class="btn btn-link btn-sm text-danger text-decoration-none px-2">Delete</a>
+                        <div class="ms-auto d-flex gap-2">
+                            <a href="{% url 'tweet_edit' tweet.id %}" class="btn btn-link btn-sm text-muted text-decoration-none px-2 py-1 rounded-pill hover-bg-white-05">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                </svg>
+                            </a>
+                            <a href="{% url 'tweet_delete' tweet.id %}" class="btn btn-link btn-sm text-danger text-decoration-none px-2 py-1 rounded-pill hover-bg-danger-10">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </a>
                         </div>
                         {% endif %}
                     </div>
@@ -126,21 +134,27 @@ Explore Feed | Tweetbar
 <!-- Pagination -->
 {% if tweets.has_other_pages %}
 <nav class="mt-5 pt-4">
-    <ul class="pagination justify-content-center gap-2 border-0">
+    <ul class="pagination justify-content-center gap-3 border-0">
         {% if tweets.has_previous %}
         <li class="page-item">
-            <a class="page-link rounded-4 border-0 shadow-sm" style="background: var(--surface); color: var(--text-main);" href="?page={{ tweets.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
-                &larr; Previous
+            <a class="page-link rounded-pill border-0 shadow-sm px-4 py-2" style="background: var(--surface); color: var(--text-main);" href="?page={{ tweets.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="me-1">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Previous
             </a>
         </li>
         {% endif %}
         
-        <li class="page-item"><span class="page-link rounded-4 border-0 shadow-sm px-4 fw-bold" style="background: var(--primary); color: white;">{{ tweets.number }}</span></li>
+        <li class="page-item"><span class="page-link rounded-pill border-0 shadow-sm px-4 py-2 fw-bold" style="background: var(--primary); color: white;">{{ tweets.number }}</span></li>
         
         {% if tweets.has_next %}
         <li class="page-item">
-            <a class="page-link rounded-4 border-0 shadow-sm" style="background: var(--surface); color: var(--text-main);" href="?page={{ tweets.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
-                Next &rarr;
+            <a class="page-link rounded-pill border-0 shadow-sm px-4 py-2" style="background: var(--surface); color: var(--text-main);" href="?page={{ tweets.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                Next
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="ms-1">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
             </a>
         </li>
         {% endif %}

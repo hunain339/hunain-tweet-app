@@ -12,8 +12,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
                     </svg>
                 </div>
-                <h2 class="display-6 fw-bold mb-2">Join Tweetbar</h2>
-                <p class="text-muted">Create your account and start sharing your thoughts.</p>
+                <h2 class="display-6 fw-bold mb-3">Join Tweetbar</h2>
+                <p class="text-muted fs-5">Create your account and start sharing your thoughts.</p>
             </div>
             
             <form method="post">
@@ -28,7 +28,7 @@
                 <div class="row g-4">
                     {% for field in form %}
                         <div class="col-12">
-                            <label class="form-label text-muted small text-uppercase tracking-wider fw-bold">
+                            <label class="form-label-premium">
                                 {{ field.label }}
                             </label>
                             {{ field }}
@@ -38,15 +38,15 @@
                                 {% endfor %}
                             {% endif %}
                             {% if field.help_text %}
-                                <div class="text-muted small mt-2 opacity-75">{{ field.help_text|safe }}</div>
+                                <div class="text-muted small mt-2 opacity-75 fw-medium">{{ field.help_text|safe }}</div>
                             {% endif %}
                         </div>
                     {% endfor %}
                 </div>
 
                 <div class="d-grid gap-3 mt-5">
-                    <button type="submit" class="btn btn-primary-custom py-3">Create Account</button>
-                    <div class="text-center mt-3 pt-4 border-top" style="border-color: rgba(255,255,255,0.05) !important;">
+                    <button type="submit" class="btn btn-primary-custom py-3 fs-5">Create Account</button>
+                    <div class="text-center mt-3 pt-4 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
                         <p class="mb-0 text-muted">Already have an account? <a href="{% url 'login' %}" class="text-primary text-decoration-none fw-bold">Log in here</a></p>
                     </div>
                 </div>
