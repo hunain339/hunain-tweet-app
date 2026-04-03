@@ -17,10 +17,10 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-secret-key')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 # --------------------------
-# ALLOWED HOSTS (Option A)
+# ALLOWED HOSTS
 # --------------------------
 ALLOWED_HOSTS = [
-    "hunain-gujjar-tweet-applicationverc.vercel.app",  # main production URL
+    "hunain-gujjar-tweet-prod.vercel.app",  # new unique production URL
     "localhost",
     "127.0.0.1",
 ]
@@ -29,7 +29,7 @@ ALLOWED_HOSTS = [
 # CSRF CONFIGURATION
 # --------------------------
 CSRF_TRUSTED_ORIGINS = [
-    "https://hunain-gujjar-tweet-applicationverc.vercel.app",
+    "https://hunain-gujjar-tweet-prod.vercel.app",
 ]
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
