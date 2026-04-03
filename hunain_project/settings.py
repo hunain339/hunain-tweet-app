@@ -5,24 +5,38 @@ import os
 from decouple import config
 import dj_database_url
 
-# Base directory
+# --------------------------
+# BASE DIRECTORY
+# --------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# --------------------------
 # SECURITY
+# --------------------------
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-secret-key')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-# Allowed hosts
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='hunain-tweet-app.vercel.app,localhost,127.0.0.1').split(',')
+# --------------------------
+# ALLOWED HOSTS
+# --------------------------
+ALLOWED_HOSTS = [
+    "hunain-gujjar-tweet-application.vercel.app",  # production
+    "localhost",
+    "127.0.0.1",
+]
 
-# CSRF Configuration
+# --------------------------
+# CSRF CONFIGURATION
+# --------------------------
 CSRF_TRUSTED_ORIGINS = [
-    'https://hunain-tweet-app.vercel.app',
+    "https://hunain-gujjar-tweet-application.vercel.app",
 ]
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 
-# Application definition
+# --------------------------
+# APPLICATION DEFINITION
+# --------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,17 +78,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'hunain_project.wsgi.application'
 
-# Database
+# --------------------------
+# DATABASE
+# --------------------------
 DATABASES = {
-    'default': dj_database_url.config(default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}", conn_max_age=600)
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600
+    )
 }
 
-# Authentication backend
+# --------------------------
+# AUTHENTICATION
+# --------------------------
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# Password validation
+# --------------------------
+# PASSWORD VALIDATION
+# --------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
@@ -82,28 +105,38 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
 
-# Internationalization
+# --------------------------
+# INTERNATIONALIZATION
+# --------------------------
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
+# --------------------------
+# STATIC FILES
+# --------------------------
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files
+# --------------------------
+# MEDIA FILES
+# --------------------------
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Login/Logout
+# --------------------------
+# LOGIN / LOGOUT
+# --------------------------
 LOGIN_URL = '/account/login/'
 LOGIN_REDIRECT_URL = '/tweet/'
 LOGOUT_REDIRECT_URL = '/tweet/'
 
-# Production Security Settings
+# --------------------------
+# PRODUCTION SECURITY
+# --------------------------
 if not DEBUG:
     SECURE_SSL_REDIRECT = False  # Vercel handles SSL
     SESSION_COOKIE_SECURE = False
