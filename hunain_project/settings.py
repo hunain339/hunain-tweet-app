@@ -1,42 +1,36 @@
-# hunain_project/settings.py
+"""
+Django settings for hunain_project (Vercel + Supabase ready)
+"""
 
-from pathlib import Path
 import os
+from pathlib import Path
 from decouple import config
 import dj_database_url
 
-# --------------------------
-# BASE DIRECTORY
-# --------------------------
+# -----------------------------
+# Base Directory
+# -----------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# --------------------------
-# SECURITY
-# --------------------------
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-secret-key')
+# -----------------------------
+# Security
+# -----------------------------
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-CHANGE_THIS')
 DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,hunain-gujjar-tweet-prod.vercel.app').split(',')
 
-# --------------------------
-# ALLOWED HOSTS
-# --------------------------
-ALLOWED_HOSTS = [
-    "hunain-gujjar-tweet-prod.vercel.app",  # new unique production URL
-    "localhost",
-    "127.0.0.1",
-]
-
-# --------------------------
-# CSRF CONFIGURATION
-# --------------------------
+# -----------------------------
+# CSRF Configuration
+# -----------------------------
 CSRF_TRUSTED_ORIGINS = [
-    "https://hunain-gujjar-tweet-prod.vercel.app",
+    f'https://{host}' for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1']
 ]
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 
-# --------------------------
-# APPLICATION DEFINITION
-# --------------------------
+# -----------------------------
+# Installed Applications
+# -----------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -44,9 +38,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'tweet',
+    'tweet',  # Your app
 ]
 
+# -----------------------------
+# Middleware
+# -----------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -58,6 +55,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# -----------------------------
+# URL configuration
+# -----------------------------
 ROOT_URLCONF = 'hunain_project.urls'
 
 TEMPLATES = [
@@ -70,77 +70,80 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'tweet.context_processors.search_query',
+                'tweet.context_processors.search_query',  # your custom context processor
             ],
         },
     },
 ]
 
 WSGI_APPLICATION = 'hunain_project.wsgi.application'
+ASGI_APPLICATION = 'hunain_project.asgi.application'
 
-# --------------------------
-# DATABASE
-# --------------------------
+# -----------------------------
+# Database (Supabase PostgreSQL)
+# -----------------------------
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        default=os.getenv('DATABASE_URL'),  # Supabase DATABASE_URL from Vercel
         conn_max_age=600
     )
 }
 
-# --------------------------
-# AUTHENTICATION
-# --------------------------
+# -----------------------------
+# Authentication
+# -----------------------------
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# --------------------------
-# PASSWORD VALIDATION
-# --------------------------
+LOGIN_URL = '/account/login/'
+LOGIN_REDIRECT_URL = '/tweet/'
+LOGOUT_REDIRECT_URL = '/tweet/'
+
+# -----------------------------
+# Password validation
+# -----------------------------
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# --------------------------
-# INTERNATIONALIZATION
-# --------------------------
+# -----------------------------
+# Internationalization
+# -----------------------------
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --------------------------
-# STATIC FILES
-# --------------------------
+# -----------------------------
+# Static files (CSS, JS, Images)
+# -----------------------------
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# --------------------------
-# MEDIA FILES
-# --------------------------
+# -----------------------------
+# Media files (user uploads)
+# -----------------------------
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# --------------------------
-# LOGIN / LOGOUT
-# --------------------------
-LOGIN_URL = '/account/login/'
-LOGIN_REDIRECT_URL = '/tweet/'
-LOGOUT_REDIRECT_URL = '/tweet/'
-
-# --------------------------
-# PRODUCTION SECURITY
-# --------------------------
+# -----------------------------
+# Production security (Vercel)
+# -----------------------------
 if not DEBUG:
     SECURE_SSL_REDIRECT = False  # Vercel handles SSL
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+
+# -----------------------------
+# Default primary key field
+# -----------------------------
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
