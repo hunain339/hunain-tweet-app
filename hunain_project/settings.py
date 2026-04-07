@@ -20,7 +20,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-CHANGE_THIS')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,hunain-gujjar-tweet-prod.vercel.app'
+    default='localhost,127.0.0.1,.vercel.app,hunain-gujjar-tweet-prod.vercel.app'
 ).split(',')
 
 # -----------------------------
@@ -34,9 +34,15 @@ if USE_HTTPS_LOCAL:
 # -----------------------------
 # CSRF Configuration
 # -----------------------------
-CSRF_TRUSTED_ORIGINS = [
-    f'https://{host}' for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1']
-]
+CSRF_TRUSTED_ORIGINS = []
+for host in ALLOWED_HOSTS:
+    if host in ['localhost', '127.0.0.1']:
+        continue
+    if host.startswith('.'):
+        CSRF_TRUSTED_ORIGINS.append(f'https://*{host}')
+    else:
+        CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
+
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 
