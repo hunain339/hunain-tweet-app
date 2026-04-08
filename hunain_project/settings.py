@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import dj_database_url
 from decouple import config
+from django.core.exceptions import ImproperlyConfigured
 
 # -----------------------------
 # Base Directory
@@ -14,14 +15,26 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # -----------------------------
+# Environment Detection
+# -----------------------------
+IS_VERCEL = "VERCEL" in os.environ
+
+# -----------------------------
 # Security
 # -----------------------------
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-CHANGE_THIS')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=not IS_VERCEL, cast=bool)
+
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,.vercel.app,hunain-gujjar-tweet-prod.vercel.app'
+    default='localhost,127.0.0.1,.vercel.app'
 ).split(',')
+
+if IS_VERCEL:
+    # Add Vercel specific hosts if needed
+    vercel_url = os.environ.get("VERCEL_URL")
+    if vercel_url:
+        ALLOWED_HOSTS.append(vercel_url)
 
 # -----------------------------
 # Local HTTPS dev
@@ -94,16 +107,33 @@ WSGI_APPLICATION = 'hunain_project.wsgi.application'
 ASGI_APPLICATION = 'hunain_project.asgi.application'
 
 # -----------------------------
-# Database (Supabase / Postgres)
+# Database Configuration
 # -----------------------------
 DATABASE_URL = os.environ.get("DATABASE_URL") or config("DATABASE_URL", default=None)
 
-if DATABASE_URL:
+if IS_VERCEL:
+    if not DATABASE_URL:
+        raise ImproperlyConfigured(
+            "DATABASE_URL is not set. SQLite is not supported on Vercel as it is a serverless platform. "
+            "Please provide a valid PostgreSQL connection string in your Vercel Environment Variables."
+        )
     DATABASES = {
-        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+        'default': dj_database_url.config(
+            default=DATABASE_URL, 
+            conn_max_age=600, 
+            ssl_require=True
+        )
+    }
+elif DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL, 
+            conn_max_age=600, 
+            ssl_require=True
+        )
     }
 else:
-    # Local dev fallback only
+    # Local development fallback
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -154,13 +184,22 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------
 # Production security (Vercel)
 # -----------------------------
-if not DEBUG:
-    SECURE_SSL_REDIRECT = False
+if not DEBUG or IS_VERCEL:
+    # Vercel uses a proxy, so we need to trust the X-Forwarded-Proto header
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool) if not DEBUG else False
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    
+    # HSTS settings
+    if not DEBUG:
+        SECURE_HSTS_SECONDS = 31536000  # 1 year
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
 
 # -----------------------------
 # Default primary key field
