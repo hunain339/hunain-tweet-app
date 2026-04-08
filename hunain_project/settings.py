@@ -5,8 +5,8 @@ Vercel + Supabase ready with local HTTPS dev
 
 import os
 from pathlib import Path
-from decouple import config
 import dj_database_url
+from decouple import config
 
 # -----------------------------
 # Base Directory
@@ -34,15 +34,10 @@ if USE_HTTPS_LOCAL:
 # -----------------------------
 # CSRF Configuration
 # -----------------------------
-CSRF_TRUSTED_ORIGINS = []
-for host in ALLOWED_HOSTS:
-    if host in ['localhost', '127.0.0.1']:
-        continue
-    if host.startswith('.'):
-        CSRF_TRUSTED_ORIGINS.append(f'https://*{host}')
-    else:
-        CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
-
+CSRF_TRUSTED_ORIGINS = [
+    f'https://{host.lstrip(".")}' if not host.startswith('.') else f'https://*{host.lstrip(".")}'
+    for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1']
+]
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 
@@ -56,8 +51,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_extensions',  # for runserver_plus
-    'tweet',  # your app
+    'django_extensions',
+    'tweet',
 ]
 
 # -----------------------------
@@ -89,7 +84,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'tweet.context_processors.search_query',  # custom processor
+                'tweet.context_processors.search_query',
             ],
         },
     },
@@ -99,23 +94,16 @@ WSGI_APPLICATION = 'hunain_project.wsgi.application'
 ASGI_APPLICATION = 'hunain_project.asgi.application'
 
 # -----------------------------
-# Database (Supabase or local fallback)
+# Database (Supabase / Postgres)
 # -----------------------------
-DATABASE_URL = config("DATABASE_URL", default=None)
+DATABASE_URL = os.environ.get("DATABASE_URL") or config("DATABASE_URL", default=None)
 
 if DATABASE_URL:
-    if "127.0.0.1" in DATABASE_URL:
-        # Local Supabase: no SSL
-        DATABASES = {
-            'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
-        }
-    else:
-        # Production Supabase Cloud: SSL required
-        DATABASES = {
-            'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
-        }
+    DATABASES = {
+        'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+    }
 else:
-    # Fallback: local SQLite
+    # Local dev fallback only
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -127,7 +115,6 @@ else:
 # Authentication
 # -----------------------------
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
-
 LOGIN_URL = '/account/login/'
 LOGIN_REDIRECT_URL = '/tweet/'
 LOGOUT_REDIRECT_URL = '/tweet/'
@@ -168,7 +155,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Production security (Vercel)
 # -----------------------------
 if not DEBUG:
-    SECURE_SSL_REDIRECT = False  # Vercel handles SSL
+    SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
