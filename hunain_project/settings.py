@@ -101,7 +101,7 @@ ASGI_APPLICATION = 'hunain_project.asgi.application'
 # -----------------------------
 # Database (Supabase or local fallback)
 # -----------------------------
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = config("DATABASE_URL", default=None)
 
 if DATABASE_URL:
     if "127.0.0.1" in DATABASE_URL:
