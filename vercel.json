@@ -1,10 +1,14 @@
 {
   "version": 2,
-  "functions": {
-    "hunain_project/wsgi.py": {
-      "runtime": "python3.9"
+  "builds": [
+    {
+      "src": "hunain_project/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.12"
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",

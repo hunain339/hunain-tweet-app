@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -----------------------------
 # Environment Detection
 # -----------------------------
-IS_VERCEL = "VERCEL" in os.environ
+IS_VERCEL = any(x in os.environ for x in ["VERCEL", "VERCEL_ENV", "VERCEL_URL"])
 
 # -----------------------------
 # Security
@@ -27,11 +27,11 @@ DEBUG = config('DEBUG', default=not IS_VERCEL, cast=bool)
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,.vercel.app'
+    default='localhost,127.0.0.1'
 ).split(',')
 
 if IS_VERCEL:
-    # Add Vercel specific hosts if needed
+    ALLOWED_HOSTS.append('.vercel.app')
     vercel_url = os.environ.get("VERCEL_URL")
     if vercel_url:
         ALLOWED_HOSTS.append(vercel_url)
@@ -113,17 +113,30 @@ DATABASE_URL = os.environ.get("DATABASE_URL") or config("DATABASE_URL", default=
 
 if IS_VERCEL:
     if not DATABASE_URL:
+        # Fallback for build time or if env var is missing
+        # We raise a helpful error at runtime via the check below
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+    else:
+        DATABASES = {
+            'default': dj_database_url.config(
+                default=DATABASE_URL, 
+                conn_max_age=600, 
+                ssl_require=True
+            )
+        }
+    
+    # Extra safety: Raise error at runtime if we're on Vercel and no Postgres URL is provided
+    # This prevents the silent fallback to a read-only SQLite file
+    if not DATABASE_URL and os.environ.get('VERCEL_ENV'):
         raise ImproperlyConfigured(
-            "DATABASE_URL is not set. SQLite is not supported on Vercel as it is a serverless platform. "
-            "Please provide a valid PostgreSQL connection string in your Vercel Environment Variables."
+            "CRITICAL: DATABASE_URL is missing on Vercel. "
+            "Please add your PostgreSQL connection string to the Vercel Dashboard Environment Variables."
         )
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=DATABASE_URL, 
-            conn_max_age=600, 
-            ssl_require=True
-        )
-    }
 elif DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
