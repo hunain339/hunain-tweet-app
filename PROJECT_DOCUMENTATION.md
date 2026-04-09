@@ -801,6 +801,12 @@ if form.is_valid():
 
 Views handle the request-response cycle and contain business logic.
 
+```python
+from django_ratelimit.decorators import ratelimit
+from django.contrib.auth.decorators import login_required
+# ... other standard imports
+```
+
 ### View 1: index
 
 ```python
