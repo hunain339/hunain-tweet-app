@@ -77,3 +77,21 @@ class TweetbarTestCase(TestCase):
         response = self.client.post(reverse('tweet_delete', args=[self.tweet.id]))
         self.assertEqual(response.status_code, 404)
         self.assertEqual(Tweet.objects.filter(id=self.tweet.id).count(), 1)
+
+    def test_admin_user_delete_view(self):
+        # Create a superuser and a regular user to delete
+        admin = User.objects.create_superuser(username='admin', password='adminpass', email='admin@example.com')
+        victim = User.objects.create_user(username='victim', password='victimpass')
+
+        # Login as admin
+        self.client.login(username='admin', password='adminpass')
+
+        # Ensure victim exists
+        self.assertTrue(User.objects.filter(username='victim').exists())
+
+        # Post to admin_user_delete view
+        response = self.client.post(reverse('admin_user_delete', args=[victim.id]))
+
+        # After deletion, victim should be gone and we should be redirected to admin_users
+        self.assertFalse(User.objects.filter(username='victim').exists())
+        self.assertEqual(response.status_code, 302)
