@@ -76,6 +76,11 @@ Visit `http://127.0.0.1:8000` in your browser.
 - `media/`: User-uploaded images.
 - `templates/`: Global base templates (layout, registration).
 
+## 📚 Documentation
+
+All project documentation (architecture, settings, models, views, deployment and recent fixes) has been consolidated into the main project documentation file: `PROJECT_DOCUMENTATION.md` at the repository root. Consult that file for full details and the quick test checklist.
+
+
 ---
 
 ## 👨‍💻 Author

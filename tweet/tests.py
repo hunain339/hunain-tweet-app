@@ -15,8 +15,8 @@ class TweetbarTestCase(TestCase):
     def test_user_registration(self):
         response = self.client.post(reverse('register'), {
             'username': 'newuser',
-            'password': 'password123',
-            'password_confirm': 'password123',
+            'password1': 'password123!@#',
+            'password2': 'password123!@#',
             'email': 'new@example.com'
         })
         self.assertEqual(User.objects.filter(username='newuser').count(), 1)

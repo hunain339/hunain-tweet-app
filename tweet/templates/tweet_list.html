@@ -1,239 +1,180 @@
 {% extends 'layout.html' %}
+{% load static %}
+{% load tweet_tags %}
 
 {% block title %}{% if query %}Search: "{{ query }}"{% else %}Explore Feed{% endif %} | Tweetbar{% endblock %}
 
 {% block content %}
-<div class="row mb-5 align-items-center fade-in">
-    <div class="col-md-8">
-        <h1 class="display-5 mb-1">
+<!-- Hero Section -->
+<div class="row mb-5 align-items-end fade-in">
+    <div class="col-md-7">
+        <h1 class="display-4 fw-bold mb-2">
             {% if query %}
                 Results for <span class="text-primary">"{{ query }}"</span>
             {% else %}
                 Explore Feed
             {% endif %}
         </h1>
-        <p class="text-muted">Stay updated with the latest thoughts from around the world.</p>
+        <p class="text-muted lead mb-0">Discover what's happening in the world right now.</p>
     </div>
-    <div class="col-md-4 text-md-end">
+    <div class="col-md-5 text-md-end mt-4 mt-md-0">
         {% if user.is_authenticated %}
-        <a
-            class="btn btn-primary-custom d-inline-flex align-items-center gap-2"
-            href="{% url 'tweet_create' %}"
-            aria-label="Create a new tweet"
-        >
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        <a href="{% url 'tweet_create' %}" class="btn btn-primary-custom d-inline-flex align-items-center gap-2 px-5 py-3">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
             </svg>
-            <span>Post a Tweet</span>
+            <span class="fs-5">Post a Tweet</span>
         </a>
         {% endif %}
     </div>
 </div>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="tweets-container">
+<!-- Main Feed Grid -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4" id="tweets-container">
     {% for tweet in tweets %}
     <div class="col">
-        <article
-            class="tweet-card h-100 d-flex flex-column"
-            id="tweet-{{ tweet.id }}"
-            aria-label="Tweet by @{{ tweet.user.username }}"
-        >
-            {% if tweet.photo_url %}
-            <div class="card-image-container">
-                <img
-                    src="{{ tweet.photo_url }}"
-                    alt="Image attached to tweet by @{{ tweet.user.username }}"
-                    loading="lazy"
-                >
-                <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to bottom,transparent 60%,rgba(15,23,42,.8));"></div>
-            </div>
-            {% endif %}
-
-            <div class="p-4 flex-grow-1 d-flex flex-column">
-
-                {# ── Author ───────────────────────────────────── #}
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div
-                            class="bg-primary bg-opacity-20 text-primary rounded-circle d-flex align-items-center justify-content-center"
-                            style="width:40px;height:40px;font-weight:700;"
-                            aria-hidden="true"
-                        >
+        <article class="tweet-card d-flex flex-column h-100" id="tweet-{{ tweet.id }}">
+            <!-- Card Header -->
+            <div class="card-header pb-0">
+                <div class="user-meta">
+                    <a href="{% url 'user_profile' tweet.user.username %}" class="text-decoration-none">
+                        <div class="avatar-h">
                             {{ tweet.user.username|first|upper }}
                         </div>
-                        <div>
-                            <h2 class="h6 mb-0">
-                                <a
-                                    href="{% url 'user_profile' tweet.user.username %}"
-                                    class="text-decoration-none text-white fw-bold"
-                                    aria-label="View profile of @{{ tweet.user.username }}"
-                                >@{{ tweet.user.username }}</a>
-                            </h2>
-                            <small class="text-muted">
-                                <time datetime="{{ tweet.created_at|date:'c' }}">
-                                    {{ tweet.created_at|timesince }} ago
-                                </time>
-                            </small>
+                    </a>
+                    <div class="d-flex flex-column flex-grow-1">
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{% url 'user_profile' tweet.user.username %}" class="username text-decoration-none">@{{ tweet.user.username }}</a>
+                            {% admin_badge tweet.user %}
                         </div>
+                        <span class="timestamp">{{ tweet.created_at|timesince }} ago</span>
                     </div>
                 </div>
+                {% if tweet.user == request.user %}
+                <div class="dropdown">
+                    <button class="btn btn-link text-muted p-0 shadow-none" type="button" data-bs-toggle="dropdown">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                        </svg>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end border-0 shadow-lg" style="background: var(--surface-lighter);">
+                        <li><a class="dropdown-item" href="{% url 'tweet_edit' tweet.id %}">Edit Tweet</a></li>
+                        <li><hr class="dropdown-divider opacity-10"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'tweet_delete' tweet.id %}">Delete Tweet</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
 
-                {# ── Content ──────────────────────────────────── #}
-                <p class="mb-4" style="font-size:1.05rem;line-height:1.6;color:rgba(255,255,255,.92);">
-                    {{ tweet.text }}
-                </p>
+            <!-- Card Content -->
+            <div class="py-3 flex-grow-1">
+                <p class="tweet-text mb-0">{{ tweet.text }}</p>
+                {% if tweet.photo_url %}
+                <img src="{{ tweet.photo_url }}" class="tweet-image mt-3" alt="Tweet Image" loading="lazy">
+                {% endif %}
+            </div>
 
-                {# ── Interactions ─────────────────────────────── #}
-                <div class="mt-auto pt-3 border-top" style="border-color:rgba(255,255,255,.05)!important;">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Card Actions -->
+            <div class="tweet-actions">
+                <div class="view-count" aria-label="View count">
+                    <svg class="icon-svg" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    <span>{{ tweet.view_count|short_number }} view{{ tweet.view_count|pluralize }}</span>
+                </div>
+                
+                {% if user.is_authenticated %}
+                <button type="button" class="action-btn like-btn {% if user in tweet.likes.all %}liked{% endif %}" 
+                        data-tweet-id="{{ tweet.id }}" data-like-url="{% url 'tweet_like' tweet.id %}" data-csrf="{{ csrf_token }}" aria-label="Like tweet">
+                    <svg class="icon-svg" width="20" height="20" fill="{% if user in tweet.likes.all %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                    </svg>
+                    <span class="like-count">{{ tweet.likes.count }}</span>
+                </button>
+                {% else %}
+                <a href="{% url 'login' %}" class="action-btn" aria-label="Sign in to like tweets">
+                    <svg class="icon-svg" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                    </svg>
+                    <span>{{ tweet.likes.count }}</span>
+                </a>
+                {% endif %}
 
-                        {# Like button (progressive enhancement: AJAX if JS available) #}
-                        {% if user.is_authenticated %}
-                        <button
-                            type="button"
-                            class="interaction-btn like-btn {% if user in tweet.likes.all %}text-primary liked{% endif %}"
-                            data-tweet-id="{{ tweet.id }}"
-                            data-liked="{% if user in tweet.likes.all %}true{% else %}false{% endif %}"
-                            data-like-url="{% url 'tweet_like' tweet.id %}"
-                            data-csrf="{{ csrf_token }}"
-                            aria-label="{% if user in tweet.likes.all %}Unlike tweet by @{{ tweet.user.username }}{% else %}Like tweet by @{{ tweet.user.username }}{% endif %}"
-                            aria-pressed="{% if user in tweet.likes.all %}true{% else %}false{% endif %}"
-                        >
-                        {% else %}
-                        <a
-                            href="{% url 'login' %}"
-                            class="interaction-btn"
-                            aria-label="Log in to like this tweet"
-                        >
-                        {% endif %}
-                            <svg
-                                width="20" height="20"
-                                fill="{% if user in tweet.likes.all %}currentColor{% else %}none{% endif %}"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                class="like-icon"
-                                aria-hidden="true"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                            </svg>
-                            <span class="like-count">{{ tweet.likes.count }}</span>
-                        {% if user.is_authenticated %}</button>{% else %}</a>{% endif %}
+                <button class="action-btn" type="button" data-bs-toggle="collapse" data-bs-target="#comments-{{ tweet.id }}" aria-expanded="false" aria-controls="comments-{{ tweet.id }}" aria-label="Toggle comments">
+                    <svg class="icon-svg" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    <span class="comment-count">{{ tweet.comments.count }}</span>
+                </button>
+            </div>
 
-                        {# Comment count (non-interactive indicator) #}
-                        <div class="interaction-btn" aria-label="{{ tweet.comments.count }} comments">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                            </svg>
-                            <span class="comment-count">{{ tweet.comments.count }}</span>
-                        </div>
-
-                        {# Edit / Delete (owner only) #}
-                        {% if tweet.user == request.user %}
-                        <div class="ms-auto d-flex gap-2">
-                            <a
-                                href="{% url 'tweet_edit' tweet.id %}"
-                                class="btn btn-link btn-sm text-muted text-decoration-none px-2 py-1 rounded-pill"
-                                aria-label="Edit your tweet"
-                                title="Edit"
-                            >
-                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                </svg>
-                            </a>
-                            <a
-                                href="{% url 'tweet_delete' tweet.id %}"
-                                class="btn btn-link btn-sm text-danger text-decoration-none px-2 py-1 rounded-pill"
-                                aria-label="Delete your tweet"
-                                title="Delete"
-                            >
-                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </a>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {# ── Comments preview ─────────────────────── #}
-                    <div
-                        class="comments-area mt-3"
-                        id="comments-{{ tweet.id }}"
-                        aria-label="Comments on this tweet"
-                        aria-live="polite"
-                    >
-                        {% if tweet.comments.all %}
-                        <div class="p-3 rounded-4" style="background:rgba(255,255,255,.03);">
-                            <div style="max-height:100px;overflow-y:auto;" class="comment-scroll">
-                                {% for comment in tweet.comments.all|slice:":3" %}
-                                <div class="mb-2">
-                                    <span class="text-primary fw-bold small">@{{ comment.user.username }}</span>
-                                    <span class="text-white opacity-75 small">{{ comment.text }}</span>
+            <!-- Collapsible Comments Area -->
+            <div class="collapse comment-section" id="comments-{{ tweet.id }}">
+                {% if user.is_authenticated %}
+                <form method="POST" action="{% url 'add_comment' tweet.id %}" class="comment-input-container quick-comment-form"
+                      data-tweet-id="{{ tweet.id }}" data-csrf="{{ csrf_token }}">
+                    {% csrf_token %}
+                    <input type="text" name="text" class="form-control comment-input" placeholder="Post a reply..." maxlength="240" required>
+                    <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center rounded-circle" style="width: 36px; height: 36px; padding: 0;">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </form>
+                {% endif %}
+                <div class="comment-list" id="comment-list-{{ tweet.id }}">
+                    {% for comment in tweet.comments.all %}
+                        {% if not comment.parent %}
+                        <div class="mb-3 d-flex gap-2">
+                            <div class="flex-shrink-0">
+                                <div class="avatar-h" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                                    {{ comment.user.username|first|upper }}
                                 </div>
-                                {% endfor %}
-                                {% if tweet.comments.count > 3 %}
-                                <small class="text-muted">…and {{ tweet.comments.count|add:"-3" }} more</small>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="mb-1">
+                                    <span class="text-primary fw-bold small">@{{ comment.user.username }}</span>
+                                    <span class="text-muted small">• {{ comment.created_at|timesince }} ago</span>
+                                </div>
+                                <p class="text-white-50 small mb-2">{{ comment.text }}</p>
+                                
+                                {# Nested Replies #}
+                                {% if comment.replies.exists %}
+                                <div class="ps-3 border-start border-muted mb-2">
+                                    {% for reply in comment.replies.all %}
+                                    <div class="mb-2 d-flex gap-2">
+                                        <div class="flex-shrink-0">
+                                            <div class="avatar-h" style="width: 24px; height: 24px; font-size: 0.65rem;">
+                                                {{ reply.user.username|first|upper }}
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <span class="text-primary fw-bold" style="font-size: 0.8rem;">@{{ reply.user.username }}</span>
+                                            <span class="text-muted" style="font-size: 0.75rem;">• {{ reply.created_at|timesince }} ago</span>
+                                            <p class="text-white-50 small mb-0">{{ reply.text }}</p>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                                 {% endif %}
                             </div>
                         </div>
                         {% endif %}
-                    </div>
-
-                    {# ── Quick reply ──────────────────────────── #}
-                    {% if user.is_authenticated %}
-                    <form
-                        method="POST"
-                        action="{% url 'add_comment' tweet.id %}"
-                        class="mt-3 d-flex gap-2 quick-comment-form"
-                        data-tweet-id="{{ tweet.id }}"
-                        data-csrf="{{ csrf_token }}"
-                        aria-label="Add a comment to tweet by @{{ tweet.user.username }}"
-                    >
-                        {% csrf_token %}
-                        <label for="comment-input-{{ tweet.id }}" class="visually-hidden">
-                            Reply to @{{ tweet.user.username }}
-                        </label>
-                        <input
-                            type="text"
-                            name="text"
-                            id="comment-input-{{ tweet.id }}"
-                            class="form-control form-control-sm form-control-custom shadow-none"
-                            placeholder="Write a reply..."
-                            maxlength="240"
-                            required
-                            aria-describedby="comment-hint-{{ tweet.id }}"
-                        >
-                        <button
-                            type="submit"
-                            class="btn btn-sm btn-primary-custom p-1 px-3"
-                            aria-label="Submit reply"
-                        >
-                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-                            </svg>
-                        </button>
-                    </form>
-                    {% endif %}
+                    {% empty %}
+                    <p class="text-muted small text-center py-3">No comments yet. Be the first to reply!</p>
+                    {% endfor %}
                 </div>
             </div>
         </article>
     </div>
     {% empty %}
     <div class="col-12 text-center py-5">
-        <div class="mb-4 opacity-25" aria-hidden="true">
-            <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
-        </div>
-        <h2 class="h4 text-white opacity-50">No tweets found{% if query %} matching "{{ query }}"{% endif %}.</h2>
-        <a href="{% url 'tweet_list' %}" class="btn btn-outline-primary mt-3 rounded-pill px-4">Clear search</a>
+        <h2 class="text-muted opacity-50">No tweets here. Be the first!</h2>
     </div>
     {% endfor %}
 </div>
+
 
 {# Pagination #}
 {% if tweets.has_other_pages %}
@@ -281,141 +222,79 @@
 {# Uses the view's JSON response (no Supabase Realtime required)    #}
 {# ─────────────────────────────────────────────────────────────── #}
 <script>
-(function () {
+(function() {
     'use strict';
 
-    /* ── AJAX Like ────────────────────────────────────────────── */
-    document.querySelectorAll('.like-btn').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const tweetId  = btn.dataset.tweetId;
-            const likeUrl  = btn.dataset.likeUrl;
-            const csrf     = btn.dataset.csrf;
-            const countEl  = btn.querySelector('.like-count');
-            const iconEl   = btn.querySelector('.like-icon');
-
-            fetch(likeUrl, {
-                method:  'POST',
-                headers: {
-                    'X-CSRFToken':       csrf,
-                    'X-Requested-With':  'XMLHttpRequest',
-                    'Content-Type':      'application/x-www-form-urlencoded',
-                },
-                body: '',
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                countEl.textContent = data.count;
-                if (data.liked) {
-                    btn.classList.add('text-primary', 'liked');
-                    iconEl.setAttribute('fill', 'currentColor');
-                    btn.setAttribute('aria-pressed', 'true');
-                    btn.setAttribute('aria-label', btn.getAttribute('aria-label').replace('Like', 'Unlike'));
-                } else {
-                    btn.classList.remove('text-primary', 'liked');
-                    iconEl.setAttribute('fill', 'none');
-                    btn.setAttribute('aria-pressed', 'false');
-                    btn.setAttribute('aria-label', btn.getAttribute('aria-label').replace('Unlike', 'Like'));
-                }
-
-                /* Micro-animation */
-                btn.style.transform = 'scale(1.3)';
-                setTimeout(function () { btn.style.transform = ''; }, 200);
-            })
-            .catch(function () {
-                /* Fall back to normal navigation on network error */
-                window.location.href = likeUrl;
-            });
-        });
-    });
-
-    /* ── AJAX Comment ─────────────────────────────────────────── */
-    document.querySelectorAll('.quick-comment-form').forEach(function (form) {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            const tweetId   = form.dataset.tweetId;
-            const csrf      = form.dataset.csrf;
-            const input     = form.querySelector('input[name="text"]');
-            const text      = input.value.trim();
-            if (!text) return;
-
-            const action    = form.getAttribute('action');
-            const commentsEl = document.getElementById('comments-' + tweetId);
-            const countEl   = document.querySelector(
-                '#tweet-' + tweetId + ' .comment-count'
-            );
-
-            fetch(action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken':      csrf,
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type':     'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({ text: text }),
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                /* Update comment count */
-                if (countEl) countEl.textContent = data.count;
-
-                /* Append new comment into the comments area */
-                let inner = commentsEl.querySelector('div.p-3');
-                if (!inner) {
-                    commentsEl.innerHTML =
-                        '<div class="p-3 rounded-4" style="background:rgba(255,255,255,.03);">' +
-                        '<div style="max-height:100px;overflow-y:auto;" class="comment-scroll"></div>' +
-                        '</div>';
-                    inner = commentsEl.querySelector('div.p-3');
-                }
-                const scroll = inner.querySelector('.comment-scroll');
-                const newComment = document.createElement('div');
-                newComment.className = 'mb-2';
-                newComment.innerHTML =
-                    '<span class="text-primary fw-bold small">@' + _esc(data.username) + '</span> ' +
-                    '<span class="text-white opacity-75 small">' + _esc(data.text) + '</span>';
-                scroll.appendChild(newComment);
-                scroll.scrollTop = scroll.scrollHeight;
-
-                input.value = '';
-            })
-            .catch(function () {
-                form.submit(); /* graceful fallback */
-            });
-        });
-    });
-
-    /* Simple HTML escaper to prevent XSS in dynamically built HTML */
     function _esc(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    /* ── Supabase Realtime (Optional / Simplest approach) ────────── */
-    /* 
-       If you want real-time updates across different users without polling:
-       1. Include <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-       2. Initialize client: const supabase = supabase.createClient('URL', 'KEY')
-       3. Subscribe:
-          supabase.channel('public:tweet_tweet')
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tweet_tweet' }, payload => {
-                const tweetId = payload.new.id;
-                // Update UI based on payload.new.like_count etc.
-            })
-            .subscribe()
-    */
+    // Like dynamic update
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const { tweetId, likeUrl, csrf } = btn.dataset;
+            try {
+                const res = await fetch(likeUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                
+                const countEl = btn.querySelector('.like-count');
+                const svgEl = btn.querySelector('svg');
+                countEl.textContent = data.count;
+                
+                if (data.liked) {
+                    btn.classList.add('liked');
+                    svgEl.setAttribute('fill', 'currentColor');
+                } else {
+                    btn.classList.remove('liked');
+                    svgEl.setAttribute('fill', 'none');
+                }
+            } catch (err) {
+                console.error('Like failed', err);
+            }
+        });
+    });
+
+    // Comment dynamic update
+    document.querySelectorAll('.quick-comment-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { tweetId, csrf } = form.dataset;
+            const input = form.querySelector('input[name="text"]');
+            const text = input.value.trim();
+            if(!text) return;
+
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({ text })
+                });
+                const data = await res.json();
+                
+                const list = document.getElementById(`comment-list-${tweetId}`);
+                const newItem = document.createElement('div');
+                newItem.className = 'mb-2 d-flex gap-2 align-items-baseline animate-fade-in';
+                newItem.innerHTML = `<span class="text-primary fw-bold" style="font-size: 0.85rem;">@${_esc(data.username)}</span>
+                                     <span class="text-white-50" style="font-size: 0.85rem;">${_esc(data.text)}</span>`;
+                list.prepend(newItem);
+                
+                const countEl = document.querySelector(`#tweet-${tweetId} .comment-count`);
+                if(countEl) countEl.textContent = data.count;
+                
+                input.value = '';
+            } catch (err) {
+                form.submit();
+            }
+        });
+    });
 })();
 </script>
-
-<style>
-    .comment-scroll::-webkit-scrollbar { width: 4px; }
-    .comment-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 10px; }
-    .like-btn { transition: transform .15s ease; cursor: pointer; background: none; border: none; }
-    .like-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 6px; }
-</style>
 {% endblock %}

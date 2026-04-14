@@ -197,26 +197,29 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 .tweet-actions {
     display: flex;
     gap: 1rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem 0 0 0;
     flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    margin-top: 1rem;
 }
 
 .view-count {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    background: rgba(10, 102, 194, 0.05);
-    color: var(--primary);
-    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(10, 102, 194, 0.14);
+    color: var(--primary) !important;
+    font-weight: 700;
     font-size: 0.95rem;
     transition: var(--transition-smooth);
 }
 
 .view-count:hover {
-    background: rgba(10, 102, 194, 0.1);
+    background: rgba(10, 102, 194, 0.22);
     color: var(--primary);
 }
 
@@ -227,26 +230,41 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 
 .action-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+    color: var(--text-main);
     display: flex;
     align-items: center;
     gap: 8px;
     font-weight: 600;
     font-size: 0.95rem;
     transition: var(--transition-smooth);
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
 }
 
 .action-btn:hover {
-    background: var(--primary-light);
+    background: rgba(255, 255, 255, 0.12);
     color: var(--primary);
 }
 
 .action-btn.liked {
-    color: #ef4444;
+    color: #fda4af;
+}
+
+.action-btn.liked:hover {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.navbar .action-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: white !important;
+}
+
+.navbar .action-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: white !important;
 }
 
 .action-btn.liked:hover {
@@ -256,6 +274,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 .action-btn svg {
     width: 20px;
     height: 20px;
+    color: inherit !important;
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -339,22 +358,28 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 
 /* Buttons */
+.btn-primary-custom,
+.btn-primary-custom *,
+.btn-primary-custom span,
+.btn-primary-custom svg {
+    color: white !important;
+}
+
 .btn-primary-custom {
     background: var(--primary);
     border: none;
-    color: white;
     padding: 12px 24px;
     border-radius: 50px;
     font-weight: 700;
     transition: var(--transition-smooth);
     box-shadow: 0 4px 15px rgba(10, 102, 194, 0.3);
+    text-decoration: none !important;
 }
 
 .btn-primary-custom:hover {
     background: var(--primary-hover);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(10, 102, 194, 0.4);
-    color: white;
 }
 
 /* Forms */
@@ -625,14 +650,22 @@ form div {
     color: white !important;
 }
 
-/* Ensure no SVG or non-text elements are affected */
-svg,
+/* Ensure non-text media elements are not affected */
 img,
 video,
 canvas,
 iframe,
 embed {
     color: initial !important;
+}
+
+/* Ensure inline SVG icons continue inheriting text color */
+.action-btn svg,
+.view-count svg,
+.card-header svg,
+.btn-primary-custom svg,
+.icon-svg {
+    color: inherit !important;
 }
 
 /* Restore specific color classes */
@@ -789,12 +822,17 @@ blockquote {
 .btn-outline-light {
     color: white !important;
     border-color: var(--border-color) !important;
+    text-decoration: none !important;
 }
 
 .btn-outline-light:hover {
     background-color: var(--primary-light) !important;
     border-color: var(--primary) !important;
     color: white !important;
+}
+
+.btn-outline-light span {
+    color: inherit !important;
 }
 
 /* CRITICAL: Ensure modal buttons are fully functional */
@@ -904,18 +942,27 @@ blockquote {
 }
 
 /* Footer Text */
-footer, 
-footer p, 
-footer a {
-    color: white !important;
+footer {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+footer p,
+footer a,
+footer .text-muted {
+    color: #0f172a !important;
 }
 
 footer .text-muted {
-    color: var(--text-muted) !important;
+    color: #475569 !important;
 }
 
 footer a:hover {
     color: var(--primary) !important;
+}
+
+footer hr {
+    border-color: rgba(148, 163, 184, 0.35) !important;
 }
 
 /* Generic Text Classes */
@@ -935,6 +982,24 @@ h1, h2, h3, h4, h5, h6,
 
 p, span, a, li, div {
     color: white !important;
+}
+
+/* Footer overrides after broad color reset */
+footer,
+footer p,
+footer a,
+footer span,
+footer li,
+footer div {
+    color: #0f172a !important;
+}
+
+footer .text-muted {
+    color: #475569 !important;
+}
+
+footer a:hover {
+    color: var(--primary) !important;
 }
 
 /* Link Colors */

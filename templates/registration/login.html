@@ -1,48 +1,166 @@
 {% extends "layout.html" %}
+{% load static %}
 
-{% block title %}Welcome Back | Login{% endblock %}
+{% block title %}Welcome Back | Login - Tweetbar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center fade-in">
-    <div class="col-md-6 col-lg-5">
-        <div class="tweet-card p-4 p-md-5">
+<!-- Gradient Background -->
+<style>
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.05) 0%, rgba(var(--secondary-rgb), 0.05) 100%);
+        pointer-events: none;
+        z-index: -1;
+    }
+</style>
+
+<div class="row justify-content-center align-items-center min-vh-100 py-5 animate-fade-in">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <!-- Glassmorphism Card -->
+        <div class="glass-card p-5 rounded-4 shadow-lg" style="backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <!-- Logo & Title -->
             <div class="text-center mb-5">
-                <div class="bg-primary bg-opacity-20 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
-                    <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                    </svg>
+                <div class="mb-3">
+                    <img src="{% static 'images/logo.png' %}" alt="Tweetbar" style="height: 48px; opacity: 0.9;">
                 </div>
-                <h2 class="display-6 fw-bold mb-3">Welcome Back</h2>
-                <p class="text-muted fs-5">Sign in to continue your journey.</p>
+                <h1 class="h2 fw-bold mb-2">Welcome Back</h1>
+                <p class="text-muted">Sign in to your Tweetbar account and start connecting.</p>
             </div>
-            
-            <form method="post" action="{% url 'login' %}">
+
+            <!-- Form -->
+            <form method="post" action="{% url 'login' %}" novalidate>
                 {% csrf_token %}
                 
+                <!-- Error Messages -->
                 {% if form.non_field_errors %}
-                    <div class="alert alert-danger border-0 rounded-4 py-3 mb-4" style="background: rgba(220, 38, 38, 0.1); color: #ef4444;">
-                        {{ form.non_field_errors }}
+                <div class="alert alert-danger border-0 rounded-3 d-flex align-items-center gap-2 mb-4" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <div>
+                        {% for error in form.non_field_errors %}
+                            <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
                     </div>
+                </div>
                 {% endif %}
 
+                <!-- Username Field -->
                 <div class="mb-4">
-                    <label class="form-label-premium">Username</label>
-                    <input type="text" name="username" class="form-control form-control-custom" placeholder="Enter username" required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label-premium">Password</label>
-                    <input type="password" name="password" class="form-control form-control-custom" placeholder="Enter password" required>
-                </div>
-
-                <div class="d-grid gap-3 mt-5">
-                    <button type="submit" class="btn btn-primary-custom py-3 fs-5">Log In</button>
-                    <div class="text-center mt-3 pt-4 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
-                        <p class="mb-0 text-muted">New to Tweetbar? <a href="{% url 'register' %}" class="text-primary text-decoration-none fw-bold">Create account</a></p>
+                    <label for="id_username" class="form-label fw-bold text-muted small text-uppercase mb-2">Username</label>
+                    <div class="input-group has-validation">
+                        <span class="input-group-text bg-transparent border-1 border-secondary-subtle">
+                            <i class="bi bi-person"></i>
+                        </span>
+                        <input 
+                            type="text" 
+                            id="id_username"
+                            name="username" 
+                            class="form-control form-control-custom border-1 border-secondary-subtle {% if form.username.errors %}is-invalid{% endif %}" 
+                            placeholder="Enter your username"
+                            autocomplete="username"
+                            required
+                            autofocus
+                        >
+                        {% if form.username.errors %}
+                        <div class="invalid-feedback d-block mt-1">
+                            {{ form.username.errors }}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
+
+                <!-- Password Field -->
+                <div class="mb-4">
+                    <label for="id_password" class="form-label fw-bold text-muted small text-uppercase mb-2">Password</label>
+                    <div class="input-group has-validation">
+                        <span class="input-group-text bg-transparent border-1 border-secondary-subtle">
+                            <i class="bi bi-lock"></i>
+                        </span>
+                        <input 
+                            type="password" 
+                            id="id_password"
+                            name="password" 
+                            class="form-control form-control-custom border-1 border-secondary-subtle {% if form.password.errors %}is-invalid{% endif %}"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                        >
+                        {% if form.password.errors %}
+                        <div class="invalid-feedback d-block mt-1">
+                            {{ form.password.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Remember Me (Optional) -->
+                <div class="mb-4 form-check">
+                    <input type="checkbox" class="form-check-input" id="rememberMe">
+                    <label class="form-check-label text-muted small" for="rememberMe">
+                        Keep me signed in
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary-custom w-100 py-3 fw-bold fs-6 mb-4">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+                </button>
+
+                <!-- Divider -->
+                <hr class="my-4 border-secondary-subtle">
+
+                <!-- Sign Up Link -->
+                <p class="text-center text-muted mb-0">
+                    Don't have an account?
+                    <a href="{% url 'register' %}" class="text-primary text-decoration-none fw-bold">
+                        Create one now
+                    </a>
+                </p>
             </form>
         </div>
+
+        <!-- Footer Info -->
+        <p class="text-center text-muted small mt-4">
+            <a href="#" class="text-decoration-none text-muted me-3">Forgot password?</a>
+            <a href="#" class="text-decoration-none text-muted">Need help?</a>
+        </p>
     </div>
 </div>
+
+<style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .input-group-text {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: var(--text-muted);
+    }
+
+    .form-control-custom {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: inherit;
+    }
+
+    .form-control-custom::placeholder {
+        color: var(--text-muted);
+    }
+
+    .form-control-custom:focus {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(var(--primary-rgb), 0.15);
+    }
+
+    .min-vh-100 {
+        min-height: 100vh;
+    }
+</style>
 {% endblock %}

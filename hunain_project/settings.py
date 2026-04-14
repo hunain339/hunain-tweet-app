@@ -27,7 +27,7 @@ DEBUG = config('DEBUG', default=not IS_VERCEL, cast=bool)
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1'
+    default='localhost,127.0.0.1,testserver'
 ).split(',')
 
 if IS_VERCEL:
@@ -137,6 +137,7 @@ if IS_VERCEL:
             "CRITICAL: DATABASE_URL is missing on Vercel. "
             "Please add your PostgreSQL connection string to the Vercel Dashboard Environment Variables."
         )
+
 elif DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
@@ -153,6 +154,19 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+from supabase import create_client, Client
+SUPABASE_URL = config('SUPABASE_URL', default='')
+SUPABASE_KEY = config('SUPABASE_SERVICE_ROLE_KEY', default='')
+
+if SUPABASE_URL and SUPABASE_KEY and SUPABASE_KEY != 'your-service-role-key-here':
+    try:
+        SUPABASE: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"⚠️ Supabase Initialization Error: {e}")
+        SUPABASE = None
+else:
+    SUPABASE = None
 
 # -----------------------------
 # Authentication
@@ -193,6 +207,27 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # -----------------------------
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+CACHES = {}
+if IS_VERCEL or config('REDIS_URL', default=None):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
+            'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'},
+            'KEY_PREFIX': 'tweetbar', 'TIMEOUT': 300,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'tweetbar-cache', 'TIMEOUT': 300,
+        }
+    }
+
+CACHE_FEED_TTL = config('CACHE_FEED_TTL', default=60, cast=int)
+CACHE_PROFILE_TTL = config('CACHE_PROFILE_TTL', default=300, cast=int)
 
 # -----------------------------
 # Production security (Vercel)

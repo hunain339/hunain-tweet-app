@@ -1,15 +1,16 @@
 {% extends "layout.html" %}
+{% load static %}
 
 {% block title %}Join Tweetbar | Create Account{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center fade-in">
-    <div class="col-md-8 col-lg-6">
-        <div class="tweet-card p-4 p-md-5">
+<div class="row justify-content-center animate-fade-in">
+    <div class="col-lg-7 col-md-9">
+        <div class="form-card p-4 p-md-5">
             <div class="text-center mb-5">
-                <div class="bg-primary bg-opacity-20 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                <div class="avatar-h mx-auto mb-4" style="width: 80px; height: 80px; font-size: 2.5rem;">
                     <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
                     </svg>
                 </div>
                 <h2 class="display-6 fw-bold mb-3">Join Tweetbar</h2>
@@ -27,18 +28,18 @@
 
                 <div class="row g-4">
                     {% for field in form %}
-                        <div class="col-12">
-                            <label class="form-label-premium">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label text-muted small fw-bold text-uppercase mb-2">
                                 {{ field.label }}
                             </label>
                             {{ field }}
                             {% if field.errors %}
                                 {% for error in field.errors %}
-                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                    <div class="text-danger small mt-1">⚠️ {{ error }}</div>
                                 {% endfor %}
                             {% endif %}
                             {% if field.help_text %}
-                                <div class="text-muted small mt-2 opacity-75 fw-medium">{{ field.help_text|safe }}</div>
+                                <div class="text-muted small mt-2 opacity-50">{{ field.help_text|safe }}</div>
                             {% endif %}
                         </div>
                     {% endfor %}
@@ -46,7 +47,7 @@
 
                 <div class="d-grid gap-3 mt-5">
                     <button type="submit" class="btn btn-primary-custom py-3 fs-5">Create Account</button>
-                    <div class="text-center mt-3 pt-4 border-top" style="border-color: rgba(255,255,255,0.08) !important;">
+                    <div class="text-center mt-3 pt-4 border-top border-light border-opacity-10">
                         <p class="mb-0 text-muted">Already have an account? <a href="{% url 'login' %}" class="text-primary text-decoration-none fw-bold">Log in here</a></p>
                     </div>
                 </div>
@@ -54,4 +55,20 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Styling for the identity inputs to match custom styles */
+    input[type="text"], input[type="password"], input[type="email"] {
+        background: var(--surface-lighter) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-standard) !important;
+        color: white !important;
+        padding: 12px 20px !important;
+        transition: var(--transition-smooth) !important;
+    }
+    input:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 4px rgba(10, 102, 194, 0.2) !important;
+    }
+</style>
 {% endblock %}

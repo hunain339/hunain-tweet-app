@@ -2439,16 +2439,37 @@ Comprehensive unit tests to ensure application stability and security.
 ## END OF DOCUMENTATION
 
 This document covers every aspect of your Tweetbar project with detailed explanations of:
-✅ Architecture and project structure  
-✅ Complete database schema with relationships  
-✅ Every Django setting and what it does  
-✅ All URL routes and their purposes  
-✅ Model definitions and field choices  
-✅ Form validation logic  
-✅ View functions with flow explanation  
-✅ Template rendering and template tags  
-✅ Complete user flows and workflows  
-✅ Key features with code examples  
-✅ Dependencies and what each does  
+- ✅ Architecture and project structure
+- ✅ Complete database schema with relationships
+- ✅ Every Django setting and what it does
+- ✅ All URL routes and their purposes
+- ✅ Model definitions and field choices
+- ✅ Form validation logic
+- ✅ View functions with flow explanation
+- ✅ Template rendering and template tags
+- ✅ Complete user flows and workflows
+- ✅ Key features with code examples
+- ✅ Dependencies and what each does
 
 You now have a complete reference guide to understand and maintain this application!
+
+---
+
+**Merged Addendum — Improvements & Quick Tests (April 12, 2026)**
+
+The following sections consolidate recent improvement notes, the fix report, and the quick test checklist into this single canonical documentation file. The standalone files `IMPROVEMENTS_SUMMARY.md`, `DELETE_BUTTONS_FIX_REPORT.md`, and `QUICK_TEST_CHECKLIST.md` were merged here and removed from the repository to avoid duplication.
+
+- **Critical fixes included:** Admin delete modal buttons made clickable (z-index and button CSS fixes), comprehensive white-text visibility rules, styled and optimized tweet view-counts, DB query optimizations (select_related/prefetch/only), and caching for admin stats and notification counts.
+- **Primary files changed during fixes:** `static/css/style.css`, `tweet/views.py`, `tweet/templates/tweet_list.html`.
+- **How to run quick verification (local):**
+    1. Activate venv: `source sandbox_venv/bin/activate`
+    2. Run system check: `python manage.py check` (should report no issues)
+    3. Start dev server with local certs: `python manage.py runserver_plus --cert-file certs/127.0.0.1+localhost.pem --key-file certs/127.0.0.1+localhost-key.pem 8004`
+    4. Open: `https://127.0.0.1:8004/tweet/admin/users/` and exercise the Delete modal per checklist.
+
+If you need separate exported copies of the change reports or the quick checklist, I can recreate them on demand, but keeping a single source of truth avoids fragmentation.
+
+---
+
+Generated/Merged: April 12, 2026
+

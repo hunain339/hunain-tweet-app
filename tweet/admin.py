@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Tweet, Comment
+from .models import Tweet, Comment, Notification
 
 
 # ── Inline: show comments inside Tweet admin ──────────────────────────────
@@ -84,3 +84,38 @@ class CommentAdmin(admin.ModelAdmin):
     def tweet_preview(self, obj):
         return obj.tweet.text[:40] + ('…' if len(obj.tweet.text) > 40 else '')
     tweet_preview.short_description = 'On Tweet'
+
+
+# ── Notification ModelAdmin ──────────────────────────────────────────────
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'notification_type', 'is_read', 'created_at')
+    list_display_links = ('id', 'user')
+    list_filter = ('notification_type', 'is_read', 'created_at')
+    search_fields = ('user__username', 'comment__text')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+
+    fieldsets = (
+        ('Notification Info', {
+            'fields': ('user', 'comment', 'notification_type', 'is_read'),
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+            'classes': ('collapse',),
+        }),
+    )
+
+    actions = ['mark_as_read', 'mark_as_unread']
+
+    def mark_as_read(self, request, queryset):
+        updated = queryset.update(is_read=True)
+        self.message_user(request, f'{updated} notification(s) marked as read.')
+    mark_as_read.short_description = 'Mark selected as read'
+
+    def mark_as_unread(self, request, queryset):
+        updated = queryset.update(is_read=False)
+        self.message_user(request, f'{updated} notification(s) marked as unread.')
+    mark_as_unread.short_description = 'Mark selected as unread'
