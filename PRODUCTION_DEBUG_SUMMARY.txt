@@ -1,0 +1,82 @@
+# 🎯 PRODUCTION DEBUG SUMMARY
+
+## ROOT CAUSE: Schema Drift Between Local & Production
+
+Local Database (SQLite - Development):
+```
+✅ tweet table: id, user_id, text, photo_url, created_at, updated_at, view_count
+✅ comment table: id, tweet_id, user_id, text, created_at, parent_id
+✅ tweet_likes (M2M): tweet_id, user_id
+✅ notification table: id, user_id, comment_id, notification_type, is_read, created_at
+✅ All indexes applied
+```
+
+Production Database (Supabase - Currently):
+```
+❌ tweet table: id, user_id, text, photo (OLD!), created_at, updated_at
+   MISSING: view_count ← CAN'T WRITE TO FIELD | CAN'T READ VIEW STATS
+❌ comment table: id, tweet_id, user_id, text, created_at
+   MISSING: parent_id ← CAN'T CREATE NESTED REPLIES
+❌ Never had: tweet_likes table
+❌ Never had: notification table ← ADMIN CRASHES LOADING THIS MODEL
+❌ Missing indexes: [user,-created_at], [-created_at], etc.
+```
+
+---
+
+## Why Both Admin + API Fail
+
+| Endpoint | Query | Error |
+|----------|-------|-------|
+| **Admin Dashboard** | `Tweet.objects...comment.parent` | ❌ `column "tweet_comment_parent_id" does not exist` → 500 |
+| **Create Tweet** | `tweet.save()` with view_count | ❌ `column "tweet_tweet_view_count" does not exist` → 500 |
+| **Admin Panel** | `ModelAdmin(Notification)` loads | ❌ `relation "tweet_notification" does not exist` → 500 |
+| **Notification view** | `Notification.objects.all()` | ❌ Table doesn't exist → 500 |
+| **Tweet list** | `.prefetch_related('comments')` | ❌ Can't access parent_id in comments → 500 or silent failure |
+
+---
+
+## Why Local Works
+
+✅ **Local**: All 4 Django migrations (0001-0004) were applied to SQLite by `migrate` command
+✅ **Production**: Only 1 manual SQL migration (20260408115500) exists—missing 0002, 0003, 0004
+
+---
+
+## Timeline of Fixes
+
+**Immediate** (Execute within 1 hour)
+1. Apply Migration 0002 (add likes + comments) → 10sec
+2. Apply Migration 0003 (photo_url field) → 5sec  
+3. Apply Migration 0004 (notifications + view_count + indexes) → 20sec
+
+**Preventive** (For future deployments)
+1. Add `python manage.py migrate` to `vercel.json` buildCommand
+2. Track Django migrations in Supabase migrations folder
+
+---
+
+## Evidence This Is Correct
+
+1. ✅ Migration 0003 exists (2026-04-08 23:08) and explicitly drops `photo`, adds `photo_url`
+2. ✅ Manual SQL (20260408 timestamp) has `photo` field → Applied BEFORE migration 0003
+3. ✅ Local `showmigrations` shows all 4 applied: [X] [X] [X] [X]
+4. ✅ Django ORM code references fields (view_count, parent, Notification) that don't exist in production
+5. ✅ Django models.py defines `view_count`, `parent`, `Notification` without null=True defaults
+
+---
+
+## Action Items
+
+**DO NOW:**
+- [ ] Open Supabase SQL Editor
+- [ ] Execute Migration 0002 SQL (see PRODUCTION_FIX_GUIDE.md)
+- [ ] Execute Migration 0003 SQL
+- [ ] Execute Migration 0004 SQL
+- [ ] Test: Admin loads, create tweet works
+
+**DO AFTER:**
+- [ ] Add `vercel.json` migration command
+- [ ] Update DEPLOYMENT_GUIDE.md
+
+**Expected Time**: 5 minutes to fix + 2 minutes to verify

@@ -138,7 +138,14 @@ def tweet_create(request):
                 try:
                     tweet.photo_url = upload_to_supabase(photo)
                 except ValidationError as exc:
-                    messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+                    # Handle Django ValidationError properly
+                    if hasattr(exc, 'message'):
+                        error_msg = exc.message
+                    elif hasattr(exc, 'messages') and exc.messages:
+                        error_msg = exc.messages[0] if isinstance(exc.messages, list) else str(exc.messages)
+                    else:
+                        error_msg = str(exc)
+                    messages.error(request, error_msg)
                     return render(request, 'tweet_form.html', {'form': form, 'action': 'create'})
                 except Exception:
                     messages.error(
@@ -173,7 +180,14 @@ def edit_tweet(request, tweet_id):
                         delete_from_supabase(tweet.photo_url)
                     updated_tweet.photo_url = upload_to_supabase(photo)
                 except ValidationError as exc:
-                    messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
+                    # Handle Django ValidationError properly
+                    if hasattr(exc, 'message'):
+                        error_msg = exc.message
+                    elif hasattr(exc, 'messages') and exc.messages:
+                        error_msg = exc.messages[0] if isinstance(exc.messages, list) else str(exc.messages)
+                    else:
+                        error_msg = str(exc)
+                    messages.error(request, error_msg)
                     return render(request, 'tweet_form.html', {
                         'form': form,
                         'tweet': tweet,
@@ -378,7 +392,7 @@ def admin_dashboard(request):
     if top_users is None:
         top_users = (
             User.objects
-            .annotate(tweet_count=Count('tweet'))
+            .annotate(tweet_count=Count('tweet_set'))
             .only('id', 'username', 'email')
             .order_by('-tweet_count')[:5]
         )
@@ -415,7 +429,7 @@ def admin_users(request):
     # OPTIMIZE: Use only() to select specific fields
     users_list = (
         User.objects
-        .annotate(tweet_count=Count('tweet'))
+        .annotate(tweet_count=Count('tweet_set'))
         .only('id', 'username', 'email', 'is_superuser', 'is_staff', 'is_active', 'date_joined')
         .order_by('-date_joined')
     )
