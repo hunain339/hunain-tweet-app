@@ -253,9 +253,3 @@ if not DEBUG or IS_VERCEL:
 # Default primary key field
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# -----------------------------
-# Optional: print HTTPS info
-# -----------------------------
-if USE_HTTPS_LOCAL:
-    print(f"✅ Local HTTPS enabled with cert: {SSL_CERT_FILE} and key: {SSL_KEY_FILE}")
