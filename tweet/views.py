@@ -125,6 +125,7 @@ def tweet_list(request):
 
 @ratelimit(key='user', rate='10/h', block=True)
 @login_required
+@login_required
 def tweet_create(request):
     if request.method == 'POST':
         form = TweetForm(request.POST, request.FILES)
@@ -137,7 +138,7 @@ def tweet_create(request):
                 try:
                     tweet.photo_url = upload_to_supabase(photo)
                 except ValidationError as exc:
-                    messages.error(request, str(exc.message))
+                    messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
                     return render(request, 'tweet_form.html', {'form': form, 'action': 'create'})
                 except Exception:
                     messages.error(
@@ -172,7 +173,7 @@ def edit_tweet(request, tweet_id):
                         delete_from_supabase(tweet.photo_url)
                     updated_tweet.photo_url = upload_to_supabase(photo)
                 except ValidationError as exc:
-                    messages.error(request, str(exc.message))
+                    messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))
                     return render(request, 'tweet_form.html', {
                         'form': form,
                         'tweet': tweet,

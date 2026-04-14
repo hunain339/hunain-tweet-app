@@ -27,11 +27,12 @@ DEBUG = config('DEBUG', default=not IS_VERCEL, cast=bool)
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,testserver'
+    default='localhost,127.0.0.1,testserver,alphaorbitnews.com,www.alphaorbitnews.com'
 ).split(',')
 
 if IS_VERCEL:
     ALLOWED_HOSTS.append('.vercel.app')
+    ALLOWED_HOSTS.extend(['alphaorbitnews.com', 'www.alphaorbitnews.com'])
     vercel_url = os.environ.get("VERCEL_URL")
     if vercel_url:
         ALLOWED_HOSTS.append(vercel_url)
@@ -51,6 +52,12 @@ CSRF_TRUSTED_ORIGINS = [
     f'https://{host.lstrip(".")}' if not host.startswith('.') else f'https://*{host.lstrip(".")}'
     for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1']
 ]
+# Add custom domain CSRF origins explicitly
+CSRF_TRUSTED_ORIGINS.extend([
+    'https://alphaorbitnews.com',
+    'https://www.alphaorbitnews.com',
+    'https://*.vercel.app',
+])
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 
