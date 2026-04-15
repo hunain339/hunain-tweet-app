@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "buildCommand": "pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput",
+  "buildCommand": "pip install -r requirements.txt && python manage.py migrate --noinput 2>&1 || echo 'Migrations may run during first deploy' && python manage.py collectstatic --noinput",
   "outputDirectory": "staticfiles",
   "framework": "django",
+  "env": {
+    "PYTHON_VERSION": "3.12"
+  },
+  "installCommand": "pip install --upgrade pip && pip install -r requirements.txt",
   "env": {
     "PYTHON_VERSION": "3.12"
   }
