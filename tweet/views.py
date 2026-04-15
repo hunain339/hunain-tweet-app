@@ -257,19 +257,35 @@ def register(request):
 @ratelimit(key='user', rate='30/h', block=True)
 @login_required
 def tweet_like(request, tweet_id):
-    tweet = get_object_or_404(Tweet, id=tweet_id)
-    if tweet.likes.filter(id=request.user.id).exists():
-        tweet.likes.remove(request.user)
-    else:
-        tweet.likes.add(request.user)
-
-    # AJAX-friendly: return JSON when request expects it
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'liked': tweet.likes.filter(id=request.user.id).exists(),
-            'count': tweet.likes.count(),
-        })
-    return redirect('tweet_list')
+    """Toggle like status for a tweet. Returns JSON for AJAX requests."""
+    try:
+        tweet = get_object_or_404(Tweet, id=tweet_id)
+        
+        if tweet.likes.filter(id=request.user.id).exists():
+            tweet.likes.remove(request.user)
+            liked = False
+        else:
+            tweet.likes.add(request.user)
+            liked = True
+        
+        # AJAX-friendly: always return JSON for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'liked': liked,
+                'count': tweet.likes.count(),
+            })
+        return redirect('tweet_list')
+    
+    except Exception as e:
+        # Return JSON error for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse(
+                {'success': False, 'error': str(e)},
+                status=500
+            )
+        # Otherwise, re-raise the exception to trigger 500 page
+        raise
 
 
 @ratelimit(key='user', rate='20/h', block=True)
@@ -279,51 +295,63 @@ def add_comment(request, tweet_id):
     Add a comment to a tweet with support for nested replies.
     Creates notifications for the tweet author.
     """
-    tweet = get_object_or_404(Tweet, id=tweet_id)
-    if request.method == 'POST':
-        form = CommentForm(request.POST)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.tweet = tweet
-            comment.user = request.user
-            
-            # Handle replies (nested comments)
-            parent_id = request.POST.get('parent_id')
-            if parent_id:
-                try:
-                    parent = Comment.objects.get(id=parent_id, tweet=tweet)
-                    comment.parent = parent
-                except Comment.DoesNotExist:
-                    pass
-            
-            comment.save()
-            messages.success(request, 'Comment added! 💬')
+    try:
+        tweet = get_object_or_404(Tweet, id=tweet_id)
+        if request.method == 'POST':
+            form = CommentForm(request.POST)
+            if form.is_valid():
+                comment = form.save(commit=False)
+                comment.tweet = tweet
+                comment.user = request.user
+                
+                # Handle replies (nested comments)
+                parent_id = request.POST.get('parent_id')
+                if parent_id:
+                    try:
+                        parent = Comment.objects.get(id=parent_id, tweet=tweet)
+                        comment.parent = parent
+                    except Comment.DoesNotExist:
+                        pass
+                
+                comment.save()
+                messages.success(request, 'Comment added! 💬')
 
-            # Create notification for tweet author if comment is by another user
-            if request.user != tweet.user:
-                notification_type = 'reply' if comment.parent else 'comment'
-                Notification.objects.create(
-                    user=tweet.user,
-                    comment=comment,
-                    notification_type=notification_type,
-                )
-            
-            # Create notification for parent comment author (if reply)
-            if comment.parent and request.user != comment.parent.user:
-                Notification.objects.create(
-                    user=comment.parent.user,
-                    comment=comment,
-                    notification_type='reply',
-                )
+                # Create notification for tweet author if comment is by another user
+                if request.user != tweet.user:
+                    notification_type = 'reply' if comment.parent else 'comment'
+                    Notification.objects.create(
+                        user=tweet.user,
+                        comment=comment,
+                        notification_type=notification_type,
+                    )
+                
+                # Create notification for parent comment author (if reply)
+                if comment.parent and request.user != comment.parent.user:
+                    Notification.objects.create(
+                        user=comment.parent.user,
+                        comment=comment,
+                        notification_type='reply',
+                    )
 
-            # AJAX-friendly response
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'username': comment.user.username,
-                    'text': comment.text,
-                    'count': tweet.comments.count(),
-                    'comment_id': comment.id,
-                })
+                # AJAX-friendly response
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'username': comment.user.username,
+                        'text': comment.text,
+                        'count': tweet.comments.count(),
+                        'comment_id': comment.id,
+                    })
+    except Exception as e:
+        # Return JSON error for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse(
+                {'success': False, 'error': str(e)},
+                status=500
+            )
+        # Otherwise, re-raise the exception
+        raise
+    
     return redirect('tweet_list')
 
 
@@ -365,49 +393,69 @@ def user_profile(request, username):
 
 @staff_member_required
 def admin_dashboard(request):
+    """Admin dashboard with cached statistics. Staff-only access."""
     if not request.user.is_superuser:
         return HttpResponseForbidden('Access denied.')
 
-    # OPTIMIZE: Cache expensive statistics for 1 hour
+    # OPTIMIZE: Cache expensive statistics for 1 hour to prevent timeout on Vercel
     cache_key = 'admin_dashboard_stats'
     stats = cache.get(cache_key)
     
     if stats is None:
-        stats = {
-            'total_users':    User.objects.count(),
-            'total_tweets':   Tweet.objects.count(),
-            'total_comments': Comment.objects.count(),
-            'total_likes':    Tweet.objects.aggregate(n=Count('likes', distinct=True))['n'] or 0,
-            'active_users':   User.objects.filter(is_active=True).count(),
-            'staff_users':    User.objects.filter(is_staff=True).count(),
-        }
-        # Cache for 1 hour (3600 seconds)
-        cache.set(cache_key, stats, 3600)
+        try:
+            stats = {
+                'total_users':    User.objects.count(),
+                'total_tweets':   Tweet.objects.count(),
+                'total_comments': Comment.objects.count(),
+                'total_likes':    Tweet.objects.aggregate(n=Count('likes', distinct=True))['n'] or 0,
+                'active_users':   User.objects.filter(is_active=True).count(),
+                'staff_users':    User.objects.filter(is_staff=True).count(),
+            }
+            # Cache for 1 hour (3600 seconds)
+            cache.set(cache_key, stats, 3600)
+        except Exception as e:
+            # Fallback if query fails (e.g., database timeout)
+            stats = {
+                'total_users': 0,
+                'total_tweets': 0,
+                'total_comments': 0,
+                'total_likes': 0,
+                'active_users': 0,
+                'staff_users': 0,
+                'error': 'Failed to load statistics'
+            }
 
     # OPTIMIZE: Cache top users for 30 minutes (less frequently accessed)
     top_users_cache_key = 'admin_dashboard_top_users'
     top_users = cache.get(top_users_cache_key)
     
     if top_users is None:
-        top_users = (
-            User.objects
-            .annotate(tweet_count=Count('tweet_set'))
-            .only('id', 'username', 'email')
-            .order_by('-tweet_count')[:5]
-        )
-        # Convert to list to cache properly
-        top_users = list(top_users)
-        cache.set(top_users_cache_key, top_users, 1800)  # 30 minutes
+        try:
+            top_users = (
+                User.objects
+                .annotate(tweet_count=Count('tweet_set'))
+                .only('id', 'username', 'email')
+                .order_by('-tweet_count')[:5]
+            )
+            # Convert to list to cache properly
+            top_users = list(top_users)
+            cache.set(top_users_cache_key, top_users, 1800)  # 30 minutes
+        except Exception as e:
+            top_users = []
 
-    # Recent data is not cached (always fresh)
-    recent_tweets = (
-        Tweet.objects
-        .select_related('user')
-        .prefetch_related('likes', 'comments')
-        .only('id', 'user_id', 'user__username', 'text', 'created_at', 'view_count')
-        .order_by('-created_at')[:10]
-    )
-    recent_users = User.objects.only('id', 'username', 'email', 'date_joined').order_by('-date_joined')[:5]
+    # Recent data is not cached (always fresh) - with error handling
+    try:
+        recent_tweets = (
+            Tweet.objects
+            .select_related('user')
+            .prefetch_related('likes', 'comments')
+            .only('id', 'user_id', 'user__username', 'text', 'created_at', 'view_count')
+            .order_by('-created_at')[:10]
+        )
+        recent_users = User.objects.only('id', 'username', 'email', 'date_joined').order_by('-date_joined')[:5]
+    except Exception as e:
+        recent_tweets = []
+        recent_users = []
 
     return render(request, 'admin_dashboard.html', {
         'stats':         stats,
