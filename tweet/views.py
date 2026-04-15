@@ -125,7 +125,6 @@ def tweet_list(request):
 
 @ratelimit(key='user', rate='10/h', block=True)
 @login_required
-@login_required
 def tweet_create(request):
     if request.method == 'POST':
         form = TweetForm(request.POST, request.FILES)
