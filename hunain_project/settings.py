@@ -216,20 +216,26 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 CACHES = {}
-if IS_VERCEL or config('REDIS_URL', default=None):
+REDIS_URL = config('REDIS_URL', default=None)
+
+if REDIS_URL:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
-            'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'},
-            'KEY_PREFIX': 'tweetbar', 'TIMEOUT': 300,
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'tweetbar',
+            'TIMEOUT': 300,
         }
     }
 else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'tweetbar-cache', 'TIMEOUT': 300,
+            'LOCATION': 'tweetbar-cache',
+            'TIMEOUT': 300,
         }
     }
 
