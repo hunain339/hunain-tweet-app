@@ -476,7 +476,7 @@ def admin_users(request):
     # OPTIMIZE: Use only() to select specific fields
     users_list = (
         User.objects
-        .annotate(tweet_count=Count('tweet_set'))
+        .annotate(tweet_count=Count('tweet'))
         .only('id', 'username', 'email', 'is_superuser', 'is_staff', 'is_active', 'date_joined')
         .order_by('-date_joined')
     )
