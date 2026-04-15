@@ -556,10 +556,7 @@ def notifications(request):
     notifications_list = (
         Notification.objects
         .filter(user=request.user)
-        .select_related('comment__user', 'comment__tweet__user')
-        .only('id', 'user_id', 'comment_id', 'notification_type', 'is_read', 'created_at',
-              'comment__id', 'comment__text', 'comment__user__username',
-              'comment__tweet__id', 'comment__tweet__text')
+        .select_related('comment__user', 'comment__tweet')
         .order_by('-created_at')
     )
     
