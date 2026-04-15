@@ -103,35 +103,6 @@
                                 </ul>
                             </div>
 
-                            {% if not user.is_superuser %}
-                            <!-- Delete Modal -->
-                            <div class="modal fade confirm-delete-modal" id="deleteUserModal{{ user.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ user.id }}" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
-                                <div class="modal-dialog modal-dialog-centered modal-sm">
-                                    <div class="modal-content border-0 rounded-4 shadow-lg" role="dialog" aria-modal="true" style="background: var(--surface); backdrop-filter: var(--glass-blur);">
-                                        <div class="modal-body p-4 text-center">
-                                            <div class="mb-3">
-                                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle text-danger d-inline-flex align-items-center justify-content-center" style="width:64px;height:64px;">
-                                                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <h5 class="modal-title fw-bold mb-2" id="deleteModalLabel{{ user.id }}">Delete user <span class="text-primary">@{{ user.username }}</span>?</h5>
-                                            <p class="text-muted mb-4">This action cannot be undone. All tweets and comments by <strong class="text-white">@{{ user.username }}</strong> will be permanently removed.</p>
-
-                                            <div class="d-flex flex-column flex-sm-row justify-content-center gap-2 align-items-center">
-                                                <form method="POST" action="{% url 'admin_user_delete' user.id %}" class="m-0">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-danger confirm-btn px-4 py-2 rounded-pill fw-bold" id="confirmDeleteBtn{{ user.id }}" aria-label="Confirm delete user {{ user.username }}">Confirm Delete</button>
-                                                </form>
-
-                                                <button type="button" class="btn btn-outline-light cancel-btn px-4 py-2 rounded-pill" data-bs-dismiss="modal" aria-label="Cancel delete">Cancel</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
@@ -166,5 +137,42 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Modals moved outside table to avoid backdrop glitches -->
+    {% for user in users %}
+        {% if not user.is_superuser %}
+        <div class="modal fade confirm-delete-modal" id="deleteUserModal{{ user.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ user.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 rounded-4 shadow-lg" style="background: var(--surface) !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;">
+                    <div class="modal-body p-4 text-center">
+                        <div class="mb-3">
+                            <div class="bg-danger bg-opacity-20 p-3 rounded-circle text-danger d-inline-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                                <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <h5 class="fw-bold mb-2" id="deleteModalLabel{{ user.id }}" style="color: white !important;">Delete User?</h5>
+                        <p class="mb-4" style="color: rgba(255,255,255,0.9) !important; font-size: 0.95rem;">
+                            Delete <span class="fw-bold" style="color: var(--primary) !important;">@{{ user.username }}</span> and all their content? This cannot be undone.
+                        </p>
+
+                        <div class="d-flex flex-column gap-2">
+                            <form method="POST" action="{% url 'admin_user_delete' user.id %}" class="w-100">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger w-100 py-2 rounded-pill fw-bold" style="background-color: #ef4444 !important; border: none !important;">
+                                    Confirm Delete
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-outline-light w-100 py-2 rounded-pill" data-bs-dismiss="modal" style="border: 1px solid rgba(255,255,255,0.2) !important;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
 </div>
 {% endblock %}

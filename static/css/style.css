@@ -795,8 +795,42 @@ blockquote {
 .btn-success:focus,
 .btn-warning:focus,
 .btn-info:focus {
-    color: white !important;
     box-shadow: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━ CUSTOM ALERTS ━━━━━━━━━━━━━━━━━━━ */
+.alert {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-standard) !important;
+    color: white !important;
+    padding: 1rem 1.5rem !important;
+    box-shadow: var(--shadow-premium);
+}
+
+.alert-success {
+    border-left: 4px solid #22c55e !important;
+    background: rgba(34, 197, 94, 0.1) !important;
+}
+
+.alert-danger {
+    border-left: 4px solid #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.alert-warning {
+    border-left: 4px solid #eab308 !important;
+    background: rgba(234, 179, 8, 0.1) !important;
+}
+
+.alert-info {
+    border-left: 4px solid #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.alert span, .alert div, .alert strong {
+    color: white !important;
 }
 
 .btn-primary:active,
