@@ -68,7 +68,9 @@
 
             <!-- Card Content -->
             <div class="py-3 flex-grow-1">
-                <p class="tweet-text mb-0">{{ tweet.text }}</p>
+                <a href="{% url 'tweet_detail' tweet.id %}" class="text-decoration-none">
+                    <p class="tweet-text mb-0">{{ tweet.text }}</p>
+                </a>
                 {% if tweet.photo_url %}
                 <img src="{{ tweet.photo_url }}" class="tweet-image mt-3" alt="Tweet Image" loading="lazy">
                 {% endif %}

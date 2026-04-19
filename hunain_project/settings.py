@@ -25,10 +25,18 @@ IS_VERCEL = any(x in os.environ for x in ["VERCEL", "VERCEL_ENV", "VERCEL_URL"])
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-CHANGE_THIS')
 DEBUG = config('DEBUG', default=not IS_VERCEL, cast=bool)
 
-ALLOWED_HOSTS = config(
-    'ALLOWED_HOSTS',
-    default='localhost,127.0.0.1,testserver,alphaorbitnews.com,www.alphaorbitnews.com'
-).split(',')
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'testserver',  # For Django test client
+    'alphaorbitnews.com',
+    'www.alphaorbitnews.com'
+]
+
+# Add environment-specified hosts if provided
+env_hosts = config('ALLOWED_HOSTS', default='').strip()
+if env_hosts:
+    ALLOWED_HOSTS.extend([h.strip() for h in env_hosts.split(',') if h.strip()])
 
 if IS_VERCEL:
     ALLOWED_HOSTS.append('.vercel.app')
@@ -72,6 +80,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'rest_framework',
+    'rest_framework.authtoken',
     'tweet',
 ]
 
@@ -266,3 +276,27 @@ if not DEBUG or IS_VERCEL:
 # Default primary key field
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# -----------------------------
+# Django REST Framework Configuration
+# -----------------------------
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'tweet.pagination.TweetPagination',
+    'PAGE_SIZE': 10,
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ],
+}

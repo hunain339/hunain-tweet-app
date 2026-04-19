@@ -7,8 +7,8 @@ from django.core.validators import URLValidator
 
 class Tweet(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    text = models.TextField(max_length=240)
-    photo_url = models.URLField(blank=True, null=True, validators=[URLValidator()])
+    text = models.TextField(max_length=500)
+    photo_url = models.URLField(max_length=500, blank=True, null=True, validators=[URLValidator()])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     view_count = models.IntegerField(default=0)
@@ -29,7 +29,7 @@ class Tweet(models.Model):
 class Comment(models.Model):
     tweet = models.ForeignKey(Tweet, related_name='comments', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    text = models.TextField(max_length=240)
+    text = models.TextField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
 

@@ -5,6 +5,7 @@ cryptography==46.0.6
 dj-database-url==2.3.0
 Django==6.0
 django-extensions==4.1
+djangorestframework==3.14.0
 flake8==7.3.0
 gunicorn==25.3.0
 MarkupSafe==3.0.3

@@ -54,6 +54,21 @@ class TweetbarTestCase(TestCase):
         self.client.post(reverse('tweet_like', args=[self.tweet.id]))
         self.assertFalse(self.tweet.likes.filter(id=self.user.id).exists())
 
+    def test_api_like_action(self):
+        # Test the DRF ViewSet like action
+        self.client.login(username='testuser', password='password123')
+        response = self.client.post(reverse('tweet-like', args=[self.tweet.id]))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get('success'))
+        self.assertTrue(data.get('liked'))
+        self.assertEqual(data.get('count'), 1)
+        # Toggle off
+        response = self.client.post(reverse('tweet-like', args=[self.tweet.id]))
+        data = response.json()
+        self.assertFalse(data.get('liked'))
+        self.assertEqual(data.get('count'), 0)
+
     def test_comment_creation(self):
         self.client.login(username='testuser', password='password123')
         response = self.client.post(reverse('add_comment', args=[self.tweet.id]), {

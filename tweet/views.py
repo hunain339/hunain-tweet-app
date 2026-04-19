@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Tweet, Comment, Notification
 from .forms import TweetForm, UserRegistrationForm, CommentForm
+from .serializers import TweetSerializer, TweetListSerializer
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
 from django.contrib import messages
@@ -18,9 +19,18 @@ from django_ratelimit.decorators import ratelimit
 import secrets
 
 # ─────────────────────────────────────────────────────────────
-#  Helpers
+#  Django REST Framework Imports
 # ─────────────────────────────────────────────────────────────
-
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .pagination import TweetPagination
+from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
+from .permissions import IsPublicReadOnlyOrAuthenticated
+from .serializers import TokenAuthenticationSerializer
 
 # ─────────────────────────────────────────────────────────────
 #  Helpers
@@ -49,6 +59,290 @@ def _full_text_search(queryset, query):
         return queryset.filter(
             Q(text__icontains=query) | Q(user__username__icontains=query)
         )
+
+
+# ─────────────────────────────────────────────────────────────
+#  Token-Based Authentication API
+# ─────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def obtain_auth_token(request):
+    """
+    Token authentication endpoint.
+    
+    POST /api/token/
+    
+    Request body:
+    {
+        "username": "your_username",
+        "password": "your_password"
+    }
+    
+    Response:
+    {
+        "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b",
+        "user_id": 1,
+        "username": "your_username"
+    }
+    
+    Returns:
+    - 200: Successfully authenticated, returns token
+    - 400: Invalid credentials or missing fields
+    
+    Usage:
+    Include the token in subsequent requests:
+    Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b
+    """
+    serializer = TokenAuthenticationSerializer(data=request.data)
+    if serializer.is_valid(raise_exception=True):
+        # For custom Serializer (not ModelSerializer), we need to call save()
+        token_data = serializer.save()
+        return Response(token_data, status=status.HTTP_200_OK)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ─────────────────────────────────────────────────────────────
+#  REST API Function Views
+# ─────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tweets_list_api(request):
+    """
+    API endpoint to list tweets.
+    Supports search and pagination.
+    
+    GET /api/tweets/
+    
+    Query parameters:
+    - search: Search tweets by text or username
+    - page: Page number for pagination
+    - page_size: Number of tweets per page (default: 10)
+    """
+    queryset = Tweet.objects.select_related('user').prefetch_related(
+        'likes',
+        Prefetch(
+            'comments',
+            queryset=Comment.objects.select_related('user').prefetch_related(
+                'replies__user'
+            ).order_by('created_at')
+        ),
+    ).order_by('-created_at')
+    
+    # Handle search parameter
+    search = request.query_params.get('search', '').strip()
+    if search:
+        queryset = _full_text_search(queryset, search)
+    
+    # Apply pagination
+    paginator = TweetPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    
+    if page is not None:
+        serializer = TweetListSerializer(
+            page,
+            many=True,
+            context={'request': request}
+        )
+        return paginator.get_paginated_response(serializer.data)
+    
+    serializer = TweetListSerializer(
+        queryset,
+        many=True,
+        context={'request': request}
+    )
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tweet_detail_api(request, tweet_id):
+    """
+    API endpoint to retrieve a specific tweet with comments.
+    
+    GET /api/tweets/{id}/
+    """
+    try:
+        tweet = Tweet.objects.select_related('user').prefetch_related(
+            'likes',
+            Prefetch(
+                'comments',
+                queryset=Comment.objects.select_related('user').prefetch_related(
+                    'replies__user'
+                ).order_by('created_at')
+            ),
+        ).get(pk=tweet_id)
+    except Tweet.DoesNotExist:
+        return Response(
+            {'detail': 'Tweet not found.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Increment view count for authenticated users
+    if request.user.is_authenticated:
+        session_key = f'viewed_tweet_{tweet.id}'
+        if not request.session.get(session_key, False):
+            Tweet.objects.filter(id=tweet.id).update(
+                view_count=F('view_count') + 1
+            )
+            request.session[session_key] = True
+    
+    serializer = TweetSerializer(tweet, context={'request': request})
+    return Response(serializer.data)
+
+
+# ─────────────────────────────────────────────────────────────
+#  ViewSet for Tweets (DRF ModelViewSet)
+# ─────────────────────────────────────────────────────────────
+
+
+class TweetViewSet(viewsets.ModelViewSet):
+    """
+    ModelViewSet providing full CRUD for Tweet via DRF router.
+    
+    Permissions:
+    - GET (list/retrieve): Public access - anyone can read
+    - POST (create): Authenticated users only
+    - PUT/PATCH (update): Authenticated user who owns the tweet
+    - DELETE: Authenticated user who owns the tweet
+    
+    The authenticated user is automatically assigned as the tweet owner on create.
+    """
+    pagination_class = TweetPagination
+    permission_classes = [IsPublicReadOnlyOrAuthenticated]
+
+    def get_queryset(self):
+        queryset = (
+            Tweet.objects
+            .select_related('user')
+            .prefetch_related(
+                'likes',
+                Prefetch(
+                    'comments',
+                    queryset=Comment.objects.select_related('user').prefetch_related('replies__user').order_by('created_at')
+                ),
+            )
+            .order_by('-created_at')
+        )
+
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            queryset = _full_text_search(queryset, search)
+        return queryset
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TweetListSerializer
+        return TweetSerializer
+
+    def perform_create(self, serializer):
+        """
+        Create a new tweet with the authenticated user assigned as the owner.
+        Handles optional photo upload to Supabase storage.
+        """
+        # Automatically assign the authenticated user as the tweet owner
+        instance = serializer.save(user=self.request.user)
+        
+        # Handle optional photo upload
+        photo = self.request.FILES.get('photo')
+        if photo:
+            try:
+                instance.photo_url = upload_to_supabase(photo)
+                instance.save()
+            except Exception:
+                # If upload fails, remove instance to avoid partial data
+                instance.delete()
+                raise
+
+    def perform_update(self, serializer):
+        """
+        Update a tweet. Permission check is handled by IsPublicReadOnlyOrAuthenticated,
+        but we include a defensive check here as well.
+        Handles optional photo replacement in Supabase storage.
+        """
+        # Defensive check - should be caught by permission class
+        instance = self.get_object()
+        if instance.user != self.request.user:
+            raise PermissionDenied('You do not have permission to edit this tweet.')
+
+        updated = serializer.save()
+        
+        # Handle optional photo replacement
+        photo = self.request.FILES.get('photo')
+        if photo:
+            try:
+                # Delete old photo if present
+                if updated.photo_url:
+                    delete_from_supabase(updated.photo_url)
+                updated.photo_url = upload_to_supabase(photo)
+                updated.save()
+            except Exception:
+                raise
+
+    def perform_destroy(self, instance):
+        """
+        Delete a tweet. Permission check is handled by IsPublicReadOnlyOrAuthenticated,
+        but we include a defensive check here as well.
+        Attempts to delete associated photo from Supabase storage, but doesn't block
+        tweet deletion if storage removal fails.
+        """
+        # Defensive check - should be caught by permission class
+        if instance.user != self.request.user:
+            raise PermissionDenied('You do not have permission to delete this tweet.')
+        
+        # Attempt to delete photo from storage, but don't block tweet deletion
+        if instance.photo_url:
+            try:
+                delete_from_supabase(instance.photo_url)
+            except Exception:
+                pass
+        
+        instance.delete()
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def like(self, request, pk=None):
+        """Toggle like for the authenticated user on this tweet."""
+        tweet = self.get_object()
+        user = request.user
+        if tweet.likes.filter(id=user.id).exists():
+            tweet.likes.remove(user)
+            liked = False
+        else:
+            tweet.likes.add(user)
+            liked = True
+        return Response({'success': True, 'liked': liked, 'count': tweet.likes.count()})
+
+
+def tweet_detail(request, tweet_id):
+    """
+    Web view for a single tweet detail page.
+    """
+    tweet = get_object_or_404(
+        Tweet.objects.select_related('user').prefetch_related(
+            'likes',
+            Prefetch(
+                'comments',
+                queryset=Comment.objects.select_related('user').prefetch_related(
+                    'replies__user'
+                ).order_by('created_at')
+            ),
+        ),
+        pk=tweet_id
+    )
+    
+    # Increment view count for authenticated users
+    if request.user.is_authenticated:
+        session_key = f'viewed_tweet_{tweet.id}'
+        if not request.session.get(session_key, False):
+            Tweet.objects.filter(id=tweet.id).update(
+                view_count=F('view_count') + 1
+            )
+            request.session[session_key] = True
+            tweet.view_count += 1 # Update local instance for immediate display
+
+    return render(request, 'tweet_detail.html', {'tweet': tweet})
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -385,7 +679,6 @@ def user_profile(request, username):
         'profile_user': profile_user,
         'tweets': tweets,
     })
-
 
 # ─────────────────────────────────────────────────────────────
 #  Admin Dashboard (superuser only)

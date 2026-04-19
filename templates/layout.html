@@ -60,14 +60,13 @@
                         <li class="nav-item ms-lg-2">
                             <a class="nav-link position-relative" href="{% url 'notifications' %}" title="Notifications">
                                 <i class="bi bi-bell-fill"></i>
-                                {% with unread=user.notifications.filter|dictsort:"is_read=False"|length %}
-                                    {% if unread > 0 %}
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge">
-                                            {{ unread }}
-                                            <span class="visually-hidden">unread notifications</span>
-                                        </span>
-                                    {% endif %}
-                                {% endwith %}
+                                {% unread_count user as count %}
+                                {% if count > 0 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge">
+                                        {{ count }}
+                                        <span class="visually-hidden">unread notifications</span>
+                                    </span>
+                                {% endif %}
                             </a>
                         </li>
 

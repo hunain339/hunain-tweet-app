@@ -1,0 +1,5 @@
+# PRODUCTION DEBUG SUMMARY
+
+This file contains production debug notes and short checklist used during incident response. Original location: root.
+
+Refer to the other archived files for step-by-step remediation and migration SQL.

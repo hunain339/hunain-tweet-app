@@ -82,3 +82,13 @@ def short_number(value):
     elif value >= 1000:
         return f"{value / 1000:.1f}K"
     return str(value)
+
+@register.simple_tag
+def unread_count(user):
+    """
+    Return the count of unread notifications for a user.
+    Usage: {% unread_count user %}
+    """
+    if user.is_authenticated:
+        return user.notifications.filter(is_read=False).count()
+    return 0
