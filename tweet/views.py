@@ -31,6 +31,9 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from .permissions import IsPublicReadOnlyOrAuthenticated
 from .serializers import TokenAuthenticationSerializer
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import TweetFilterSet
 
 # ─────────────────────────────────────────────────────────────
 #  Helpers
@@ -199,20 +202,59 @@ def tweet_detail_api(request, tweet_id):
 
 class TweetViewSet(viewsets.ModelViewSet):
     """
-    ModelViewSet providing full CRUD for Tweet via DRF router.
+    ModelViewSet providing full CRUD for Tweet via DRF router with
+    advanced filtering, searching, and pagination capabilities.
+    
+    Supported Query Parameters:
+    - search: Full-text search on tweet text and username
+            Example: /api/tweets/?search=python
+    - user: Filter by user ID
+            Example: /api/tweets/?user=1
+    - created_after: Filter tweets created after date (ISO format)
+                     Example: /api/tweets/?created_after=2024-01-01
+    - created_before: Filter tweets created before date (ISO format)
+                      Example: /api/tweets/?created_before=2024-12-31
+    - has_photo: Filter tweets with photos (true/false)
+                 Example: /api/tweets/?has_photo=true
+    - ordering: Sort results by field
+                Example: /api/tweets/?ordering=-created_at
+    - page: Pagination page number
+            Example: /api/tweets/?page=2
+    - page_size: Results per page (max 100)
+                 Example: /api/tweets/?page_size=25
+    
+    Combined Query Example:
+    /api/tweets/?search=technology&user=1&ordering=-created_at&page=1&page_size=20
     
     Permissions:
     - GET (list/retrieve): Public access - anyone can read
     - POST (create): Authenticated users only
     - PUT/PATCH (update): Authenticated user who owns the tweet
     - DELETE: Authenticated user who owns the tweet
-    
-    The authenticated user is automatically assigned as the tweet owner on create.
     """
+    queryset = Tweet.objects.all()
     pagination_class = TweetPagination
     permission_classes = [IsPublicReadOnlyOrAuthenticated]
+    
+    # Filter backends for advanced querying
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    
+    # Full-text search fields
+    search_fields = ['text', 'user__username']
+    
+    # Filterset for structured filtering
+    filterset_class = TweetFilterSet
+    
+    # Default ordering
+    ordering_fields = ['created_at', 'likes_count']
+    ordering = ['-created_at']
 
     def get_queryset(self):
+        """
+        Optimize queryset with select_related and prefetch_related.
+        Pagination and filtering are handled by DRF's filter backends
+        and pagination_class, which use this queryset as the base.
+        """
         queryset = (
             Tweet.objects
             .select_related('user')
@@ -223,12 +265,7 @@ class TweetViewSet(viewsets.ModelViewSet):
                     queryset=Comment.objects.select_related('user').prefetch_related('replies__user').order_by('created_at')
                 ),
             )
-            .order_by('-created_at')
         )
-
-        search = self.request.query_params.get('search', '').strip()
-        if search:
-            queryset = _full_text_search(queryset, search)
         return queryset
 
     def get_serializer_class(self):
