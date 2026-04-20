@@ -41,3 +41,26 @@ Thumbs.db
 media/
 .vercel
 .env*.local
+
+# SSL Certificates (sensitive)
+*.crt
+*.key
+*.pem
+*.pfx
+*.p12
+
+# Secrets & Credentials
+secrets/
+.secrets
+.aws
+.credentials
+config/secrets*
+
+# Database backups
+*.sql
+*.sql.gz
+*.dump
+
+# Node modules (if using frontend tools)
+node_modules/
+npm-debug.log*
