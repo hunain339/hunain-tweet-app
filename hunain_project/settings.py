@@ -301,4 +301,6 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     ],
+    # Caching configuration for read-heavy endpoints
+    'DEFAULT_CACHE_TIMEOUT': 300,  # Cache for 5 minutes by default
 }

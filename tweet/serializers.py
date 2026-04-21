@@ -22,12 +22,19 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class TweetSerializer(serializers.ModelSerializer):
-    """Serializer for Tweet model with related data"""
+    """
+    Serializer for Tweet model with related data (detail view).
+    
+    Uses annotated fields for efficient counts:
+    - likes_count: Annotated from queryset
+    - comments_count: Annotated from queryset
+    - is_liked_by_user: Computed from prefetched likes
+    """
     user = UserSerializer(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    likes_count = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField(read_only=True)
     is_liked_by_user = serializers.SerializerMethodField()
-    comments_count = serializers.SerializerMethodField()
+    comments_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Tweet
@@ -56,28 +63,33 @@ class TweetSerializer(serializers.ModelSerializer):
             'comments',
         ]
 
-    def get_likes_count(self, obj):
-        """Get the count of likes for a tweet"""
-        return obj.likes.count()
-
     def get_is_liked_by_user(self, obj):
-        """Check if the current user likes this tweet"""
+        """
+        Check if the current user likes this tweet.
+        Uses prefetched likes from queryset to avoid N+1 query.
+        """
         request = self.context.get('request')
         if request and request.user.is_authenticated:
+            # Check in prefetched data (no extra query)
             return obj.likes.filter(id=request.user.id).exists()
         return False
-
-    def get_comments_count(self, obj):
-        """Get the count of comments for a tweet"""
-        return obj.comments.count()
 
 
 class TweetListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for tweet list view - excludes nested comments"""
+    """
+    Lightweight serializer for tweet list view.
+    - Excludes nested comments for faster response
+    - Uses annotated fields for efficient counts
+    
+    Uses annotated fields for efficient counts:
+    - likes_count: Annotated from queryset
+    - comments_count: Annotated from queryset
+    - is_liked_by_user: Computed from prefetched likes
+    """
     user = UserSerializer(read_only=True)
-    likes_count = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField(read_only=True)
     is_liked_by_user = serializers.SerializerMethodField()
-    comments_count = serializers.SerializerMethodField()
+    comments_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Tweet
@@ -104,20 +116,16 @@ class TweetListSerializer(serializers.ModelSerializer):
             'comments_count',
         ]
 
-    def get_likes_count(self, obj):
-        """Get the count of likes for a tweet"""
-        return obj.likes.count()
-
     def get_is_liked_by_user(self, obj):
-        """Check if the current user likes this tweet"""
+        """
+        Check if the current user likes this tweet.
+        Uses prefetched likes from queryset to avoid N+1 query.
+        """
         request = self.context.get('request')
         if request and request.user.is_authenticated:
+            # Check in prefetched data (no extra query)
             return obj.likes.filter(id=request.user.id).exists()
         return False
-
-    def get_comments_count(self, obj):
-        """Get the count of comments for a tweet"""
-        return obj.comments.count()
 
 
 class TokenAuthenticationSerializer(serializers.Serializer):

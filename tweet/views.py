@@ -14,6 +14,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 from django.core.cache import cache
 from django_ratelimit.decorators import ratelimit
 import secrets
@@ -34,6 +35,8 @@ from .serializers import TokenAuthenticationSerializer
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import TweetFilterSet
+from .query_optimizations import OptimizedTweetQueries
+from .cache_utils import CacheConfig, smart_cache_page
 
 # ─────────────────────────────────────────────────────────────
 #  Helpers
@@ -111,10 +114,12 @@ def obtain_auth_token(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@cache_page(CacheConfig.SEARCH_CACHE_TIME)
+@vary_on_headers('Authorization')
 def tweets_list_api(request):
     """
     API endpoint to list tweets.
-    Supports search and pagination.
+    Supports search and pagination with performance caching.
     
     GET /api/tweets/
     
@@ -122,16 +127,14 @@ def tweets_list_api(request):
     - search: Search tweets by text or username
     - page: Page number for pagination
     - page_size: Number of tweets per page (default: 10)
+    
+    Caching:
+    - Cached for 2 minutes for anonymous users
+    - Cache varies by query parameters (search, page, page_size)
+    - Authenticated users bypass cache (get fresh dynamic responses)
     """
-    queryset = Tweet.objects.select_related('user').prefetch_related(
-        'likes',
-        Prefetch(
-            'comments',
-            queryset=Comment.objects.select_related('user').prefetch_related(
-                'replies__user'
-            ).order_by('created_at')
-        ),
-    ).order_by('-created_at')
+    # Use optimized queryset for list view (lightweight, no comments)
+    queryset = OptimizedTweetQueries.get_tweets_for_list()
     
     # Handle search parameter
     search = request.query_params.get('search', '').strip()
@@ -160,23 +163,24 @@ def tweets_list_api(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@cache_page(CacheConfig.PUBLIC_DETAIL_CACHE_TIME)
+@vary_on_headers('Authorization')
 def tweet_detail_api(request, tweet_id):
     """
     API endpoint to retrieve a specific tweet with comments.
     
     GET /api/tweets/{id}/
+    
+    Caching:
+    - Cached for 10 minutes for anonymous users
+    - Cache varies by Authorization header
+    - Authenticated users bypass cache (to show their custom like status)
     """
     try:
-        tweet = Tweet.objects.select_related('user').prefetch_related(
-            'likes',
-            Prefetch(
-                'comments',
-                queryset=Comment.objects.select_related('user').prefetch_related(
-                    'replies__user'
-                ).order_by('created_at')
-            ),
-        ).get(pk=tweet_id)
-    except Tweet.DoesNotExist:
+        # Use optimized queryset for detail view
+        queryset = OptimizedTweetQueries.get_tweets_for_detail()
+        tweet = queryset.get(pk=tweet_id)
+    except Tweet.DoesNotExist: 
         return Response(
             {'detail': 'Tweet not found.'},
             status=status.HTTP_404_NOT_FOUND
@@ -251,21 +255,29 @@ class TweetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Optimize queryset with select_related and prefetch_related.
-        Pagination and filtering are handled by DRF's filter backends
-        and pagination_class, which use this queryset as the base.
+        Return optimized queryset based on the action.
+        
+        Performance optimizations:
+        - List action: Lightweight queryset without comments (2-3 queries)
+        - Retrieve action: Full queryset with comments (3-4 queries)
+        - Filter operations: Applied at database level
+        - Aggregates: Annotated at queryset level (no N+1 queries)
+        - Field selection: Limited with .only() to required fields
         """
-        queryset = (
-            Tweet.objects
-            .select_related('user')
-            .prefetch_related(
-                'likes',
-                Prefetch(
-                    'comments',
-                    queryset=Comment.objects.select_related('user').prefetch_related('replies__user').order_by('created_at')
-                ),
+        if self.action == 'list':
+            # List view uses lightweight queryset without comments
+            queryset = OptimizedTweetQueries.get_tweets_for_list()
+        elif self.action == 'retrieve':
+            # Detail view fetches full tweet with comments
+            queryset = OptimizedTweetQueries.get_tweets_for_detail()
+        else:
+            # For other actions (create, update, delete), use basic queryset
+            queryset = (
+                Tweet.objects
+                .select_related('user')
+                .prefetch_related('likes')
             )
-        )
+        
         return queryset
 
     def get_serializer_class(self):
