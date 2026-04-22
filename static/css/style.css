@@ -1192,3 +1192,37 @@ form input[type="submit"]:focus {
 }
 
 /* End improved delete modal styles */
+/* Premium Toasts */
+.toast {
+    background: var(--surface) !important;
+    backdrop-filter: var(--glass-blur) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+    animation: toastSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(100%) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.toast.bg-danger {
+    background: rgba(239, 68, 68, 0.9) !important;
+}
+
+.toast.bg-primary {
+    background: rgba(10, 102, 194, 0.9) !important;
+}
+
+.toast-body {
+    padding: 1rem 1.25rem !important;
+    font-size: 0.95rem;
+    letter-spacing: 0.2px;
+}
