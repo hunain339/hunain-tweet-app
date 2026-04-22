@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Tweet, Comment
 from django.contrib.auth.models import User
+from .utils.storage import get_signed_url
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -25,16 +26,16 @@ class TweetSerializer(serializers.ModelSerializer):
     """
     Serializer for Tweet model with related data (detail view).
     
-    Uses annotated fields for efficient counts:
+    Uses annotated fields for efficient status checks:
     - likes_count: Annotated from queryset
     - comments_count: Annotated from queryset
-    - is_liked_by_user: Computed from prefetched likes
+    - is_liked_by_user: Annotated via Subquery (Exists)
     """
     user = UserSerializer(read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
     likes_count = serializers.IntegerField(read_only=True)
     is_liked_by_user = serializers.SerializerMethodField()
     comments_count = serializers.IntegerField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Tweet
@@ -49,30 +50,22 @@ class TweetSerializer(serializers.ModelSerializer):
             'likes_count',
             'is_liked_by_user',
             'comments_count',
-            'comments',
         ]
-        read_only_fields = [
-            'id',
-            'user',
-            'created_at',
-            'updated_at',
-            'view_count',
-            'likes_count',
-            'is_liked_by_user',
-            'comments_count',
-            'comments',
-        ]
+        read_only_fields = fields
 
     def get_is_liked_by_user(self, obj):
-        """
-        Check if the current user likes this tweet.
-        Uses prefetched likes from queryset to avoid N+1 query.
-        """
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            # Check in prefetched data (no extra query)
-            return obj.likes.filter(id=request.user.id).exists()
-        return False
+        """Uses annotated field from optimized queryset."""
+        return getattr(obj, 'is_liked_by_user', False)
+
+    def get_photo_url(self, obj):
+        """Returns a signed URL for private storage."""
+        if hasattr(obj, 'photo_url') and obj.photo_url:
+            # Check if it's already a full URL or just a path
+            url = obj.photo_url
+            if hasattr(url, 'url'): # Handle FileField if used
+                url = url.url
+            return get_signed_url(str(url))
+        return None
 
 
 class TweetListSerializer(serializers.ModelSerializer):
@@ -80,16 +73,12 @@ class TweetListSerializer(serializers.ModelSerializer):
     Lightweight serializer for tweet list view.
     - Excludes nested comments for faster response
     - Uses annotated fields for efficient counts
-    
-    Uses annotated fields for efficient counts:
-    - likes_count: Annotated from queryset
-    - comments_count: Annotated from queryset
-    - is_liked_by_user: Computed from prefetched likes
     """
     user = UserSerializer(read_only=True)
     likes_count = serializers.IntegerField(read_only=True)
     is_liked_by_user = serializers.SerializerMethodField()
     comments_count = serializers.IntegerField(read_only=True)
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Tweet
@@ -105,27 +94,17 @@ class TweetListSerializer(serializers.ModelSerializer):
             'is_liked_by_user',
             'comments_count',
         ]
-        read_only_fields = [
-            'id',
-            'user',
-            'created_at',
-            'updated_at',
-            'view_count',
-            'likes_count',
-            'is_liked_by_user',
-            'comments_count',
-        ]
+        read_only_fields = fields
 
     def get_is_liked_by_user(self, obj):
-        """
-        Check if the current user likes this tweet.
-        Uses prefetched likes from queryset to avoid N+1 query.
-        """
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            # Check in prefetched data (no extra query)
-            return obj.likes.filter(id=request.user.id).exists()
-        return False
+        """Uses annotated field from optimized queryset."""
+        return getattr(obj, 'is_liked_by_user', False)
+
+    def get_photo_url(self, obj):
+        """Returns a signed URL for private storage."""
+        if hasattr(obj, 'photo_url') and obj.photo_url:
+            return get_signed_url(str(obj.photo_url))
+        return None
 
 
 class TokenAuthenticationSerializer(serializers.Serializer):

@@ -66,7 +66,7 @@ CSRF_TRUSTED_ORIGINS.extend([
     'https://www.alphaorbitnews.com',
     'https://*.vercel.app',
 ])
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 
 # -----------------------------
@@ -173,15 +173,23 @@ else:
         }
     }
 
-from supabase import create_client, Client
+# -----------------------------
+# Supabase Configuration
+# -----------------------------
+# WARNING: Using SUPABASE_SERVICE_ROLE_KEY bypasses all Row Level Security (RLS) policies.
+# This should only be used on the server-side for administrative tasks.
+# For client-side operations, use the SUPABASE_ANON_KEY and implement proper RLS.
 SUPABASE_URL = config('SUPABASE_URL', default='')
 SUPABASE_KEY = config('SUPABASE_SERVICE_ROLE_KEY', default='')
 
 if SUPABASE_URL and SUPABASE_KEY and SUPABASE_KEY != 'your-service-role-key-here':
     try:
+        from supabase import create_client, Client
         SUPABASE: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     except Exception as e:
-        print(f"⚠️ Supabase Initialization Error: {e}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Supabase Initialization Error: {e}")
         SUPABASE = None
 else:
     SUPABASE = None

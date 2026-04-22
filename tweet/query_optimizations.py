@@ -11,7 +11,7 @@ Performance improvements:
 - Organized by use case for clarity and maintainability
 """
 
-from django.db.models import Prefetch, Count, Q, F
+from django.db.models import Prefetch, Count, Q, F, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from .models import Tweet, Comment
 
@@ -23,23 +23,28 @@ class OptimizedTweetQueries:
     """
 
     @staticmethod
-    def get_tweets_for_list():
+    def get_tweets_for_list(user=None):
         """
         Optimized queryset for tweet list view (paginated).
         
         Performance:
         - Uses select_related for user data (1 query)
-        - Uses prefetch_related for likes (1 query)
-        - Annotates comment count to avoid N+1 on count() (no extra queries)
-        - Only fetches necessary fields from User
-        - Does NOT fetch comments for list view
-        
-        Typical query count: 2-3 queries per request (paginated)
+        - Annotates is_liked status using Subquery (SQL level)
+        - Annotates counts to avoid N+1 (no extra queries)
+        - Only fetches necessary fields
         """
+        queryset = Tweet.objects.select_related('user')
+        
+        if user and user.is_authenticated:
+            is_liked = Exists(
+                Tweet.objects.filter(id=OuterRef('pk'), likes=user)
+            )
+            queryset = queryset.annotate(is_liked_by_user=is_liked)
+        else:
+            queryset = queryset.annotate(is_liked_by_user=F('id') == -1) # False
+
         return (
-            Tweet.objects
-            .select_related('user')
-            .prefetch_related('likes')
+            queryset
             .annotate(likes_count=Count('likes', distinct=True))
             .annotate(comments_count=Count('comments', distinct=True))
             .only(

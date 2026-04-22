@@ -15,6 +15,8 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_headers
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django.core.cache import cache
 from django_ratelimit.decorators import ratelimit
 import secrets
@@ -71,6 +73,7 @@ def _full_text_search(queryset, query):
 #  Token-Based Authentication API
 # ─────────────────────────────────────────────────────────────
 
+@ratelimit(key='ip', rate='5/m', block=True)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def obtain_auth_token(request):
@@ -253,25 +256,23 @@ class TweetViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'likes_count']
     ordering = ['-created_at']
 
+    @method_decorator(cache_page(30))  # Cache feed for 30 seconds
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
         """
         Return optimized queryset based on the action.
-        
-        Performance optimizations:
-        - List action: Lightweight queryset without comments (2-3 queries)
-        - Retrieve action: Full queryset with comments (3-4 queries)
-        - Filter operations: Applied at database level
-        - Aggregates: Annotated at queryset level (no N+1 queries)
-        - Field selection: Limited with .only() to required fields
+        Passes current user to query optimizer for SQL-level 'is_liked' status.
         """
+        user = self.request.user if self.request else None
+        
         if self.action == 'list':
-            # List view uses lightweight queryset without comments
-            queryset = OptimizedTweetQueries.get_tweets_for_list()
+            queryset = OptimizedTweetQueries.get_tweets_for_list(user=user)
         elif self.action == 'retrieve':
-            # Detail view fetches full tweet with comments
-            queryset = OptimizedTweetQueries.get_tweets_for_detail()
+            # Detail view now uses lightweight list query as comments are separate
+            queryset = OptimizedTweetQueries.get_tweets_for_list(user=user)
         else:
-            # For other actions (create, update, delete), use basic queryset
             queryset = (
                 Tweet.objects
                 .select_related('user')
@@ -346,6 +347,23 @@ class TweetViewSet(viewsets.ModelViewSet):
                 delete_from_supabase(instance.photo_url)
             except Exception:
                 pass
+
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
+    def comments(self, request, pk=None):
+        """
+        Dedicated endpoint for paginated tweet comments.
+        Scales significantly better than nested serialization.
+        """
+        tweet = self.get_object()
+        queryset = OptimizedCommentQueries.get_comments_for_tweet(tweet.id)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = CommentSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = CommentSerializer(queryset, many=True)
+        return Response(serializer.data)
         
         instance.delete()
 
@@ -580,6 +598,7 @@ def tweet_delete(request, tweet_id):
 #  Auth
 # ─────────────────────────────────────────────────────────────
 
+@ratelimit(key='ip', rate='3/h', block=True)
 def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)

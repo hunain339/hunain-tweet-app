@@ -103,3 +103,35 @@ def delete_from_supabase(url: str) -> None:
         supabase.storage.from_(BUCKET).remove([path])
     except Exception as exc:
         logger.warning('Failed to delete Supabase object "%s": %s', url, exc)
+
+
+def get_signed_url(url: str, expires_in: int = 3600) -> str:
+    """
+    Generate a signed URL for a private object.
+    If the object is public or no supabase client is available, returns the original URL.
+    """
+    if not url:
+        return ''
+
+    supabase = getattr(settings, 'SUPABASE', None)
+    if supabase is None:
+        return url
+
+    try:
+        # Extract path from URL
+        marker = f'/{BUCKET}/'
+        if marker in url:
+            path = url.split(marker, 1)[1]
+        else:
+            path = url.split('/')[-1]
+
+        # Generate signed URL
+        res = supabase.storage.from_(BUCKET).create_signed_url(path, expires_in)
+        
+        # res is usually a dict like {'signedURL': '...'} or {'signedUrl': '...'}
+        if isinstance(res, dict):
+            return res.get('signedURL') or res.get('signedUrl') or url
+        return str(res)
+    except Exception as exc:
+        logger.warning('Failed to generate signed URL for "%s": %s', url, exc)
+        return url
