@@ -41,7 +41,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
     Permission class that allows:
     - READ access to anyone
     - WRITE/DELETE access only to the object owner
-    
+
     Used for nested resources or when you want to ensure
     ownership checks at the object level.
     """

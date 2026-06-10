@@ -1,0 +1,9 @@
+# Development / CI tools
+black==26.5.1
+ruff==0.15.16
+flake8==7.3.0
+autopep8==2.3.2
+pycodestyle==2.14.0
+pyflakes==3.4.0
+mypy-extensions==1.0.0
+python-dotenv==1.2.2

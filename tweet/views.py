@@ -12,11 +12,9 @@ from .utils.storage import upload_to_supabase, delete_from_supabase
 from django.core.exceptions import ValidationError
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseForbidden, JsonResponse
-from django.views.decorators.http import require_POST
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_headers
 from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 from django.core.cache import cache
 from django_ratelimit.decorators import ratelimit
 import secrets
@@ -33,16 +31,17 @@ from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from .permissions import IsPublicReadOnlyOrAuthenticated
-from .serializers import TokenAuthenticationSerializer
+from .serializers import TokenAuthenticationSerializer, CommentSerializer
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import TweetFilterSet
-from .query_optimizations import OptimizedTweetQueries
-from .cache_utils import CacheConfig, smart_cache_page
+from .query_optimizations import OptimizedTweetQueries, OptimizedCommentQueries
+from .cache_utils import CacheConfig
 
 # ─────────────────────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────────────────────
+
 
 def _full_text_search(queryset, query):
     """
@@ -51,16 +50,16 @@ def _full_text_search(queryset, query):
     (e.g. local SQLite during development).
     """
     try:
-        from django.contrib.postgres.search import (
-            SearchVector, SearchQuery, SearchRank
+        from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+
+        vector = SearchVector("text", weight="A") + SearchVector(
+            "user__username", weight="B"
         )
-        vector = SearchVector('text', weight='A') + SearchVector('user__username', weight='B')
         search_query = SearchQuery(query)
         return (
-            queryset
-            .annotate(rank=SearchRank(vector, search_query))
+            queryset.annotate(rank=SearchRank(vector, search_query))
             .filter(rank__gt=0.01)
-            .order_by('-rank')
+            .order_by("-rank")
         )
     except Exception:
         # Fallback for SQLite / missing pg extension
@@ -73,32 +72,33 @@ def _full_text_search(queryset, query):
 #  Token-Based Authentication API
 # ─────────────────────────────────────────────────────────────
 
-@ratelimit(key='ip', rate='5/m', block=True)
-@api_view(['POST'])
+
+@ratelimit(key="ip", rate="5/m", block=True)
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def obtain_auth_token(request):
     """
     Token authentication endpoint.
-    
+
     POST /api/token/
-    
+
     Request body:
     {
         "username": "your_username",
         "password": "your_password"
     }
-    
+
     Response:
     {
         "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b",
         "user_id": 1,
         "username": "your_username"
     }
-    
+
     Returns:
     - 200: Successfully authenticated, returns token
     - 400: Invalid credentials or missing fields
-    
+
     Usage:
     Include the token in subsequent requests:
     Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b
@@ -115,22 +115,23 @@ def obtain_auth_token(request):
 #  REST API Function Views
 # ─────────────────────────────────────────────────────────────
 
-@api_view(['GET'])
+
+@api_view(["GET"])
 @permission_classes([AllowAny])
 @cache_page(CacheConfig.SEARCH_CACHE_TIME)
-@vary_on_headers('Authorization')
+@vary_on_headers("Authorization")
 def tweets_list_api(request):
     """
     API endpoint to list tweets.
     Supports search and pagination with performance caching.
-    
+
     GET /api/tweets/
-    
+
     Query parameters:
     - search: Search tweets by text or username
     - page: Page number for pagination
     - page_size: Number of tweets per page (default: 10)
-    
+
     Caching:
     - Cached for 2 minutes for anonymous users
     - Cache varies by query parameters (search, page, page_size)
@@ -138,42 +139,34 @@ def tweets_list_api(request):
     """
     # Use optimized queryset for list view (lightweight, no comments)
     queryset = OptimizedTweetQueries.get_tweets_for_list()
-    
+
     # Handle search parameter
-    search = request.query_params.get('search', '').strip()
+    search = request.query_params.get("search", "").strip()
     if search:
         queryset = _full_text_search(queryset, search)
-    
+
     # Apply pagination
     paginator = TweetPagination()
     page = paginator.paginate_queryset(queryset, request)
-    
+
     if page is not None:
-        serializer = TweetListSerializer(
-            page,
-            many=True,
-            context={'request': request}
-        )
+        serializer = TweetListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-    
-    serializer = TweetListSerializer(
-        queryset,
-        many=True,
-        context={'request': request}
-    )
+
+    serializer = TweetListSerializer(queryset, many=True, context={"request": request})
     return Response(serializer.data)
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([AllowAny])
 @cache_page(CacheConfig.PUBLIC_DETAIL_CACHE_TIME)
-@vary_on_headers('Authorization')
+@vary_on_headers("Authorization")
 def tweet_detail_api(request, tweet_id):
     """
     API endpoint to retrieve a specific tweet with comments.
-    
+
     GET /api/tweets/{id}/
-    
+
     Caching:
     - Cached for 10 minutes for anonymous users
     - Cache varies by Authorization header
@@ -183,22 +176,19 @@ def tweet_detail_api(request, tweet_id):
         # Use optimized queryset for detail view
         queryset = OptimizedTweetQueries.get_tweets_for_detail()
         tweet = queryset.get(pk=tweet_id)
-    except Tweet.DoesNotExist: 
+    except Tweet.DoesNotExist:
         return Response(
-            {'detail': 'Tweet not found.'},
-            status=status.HTTP_404_NOT_FOUND
+            {"detail": "Tweet not found."}, status=status.HTTP_404_NOT_FOUND
         )
-    
+
     # Increment view count for authenticated users
     if request.user.is_authenticated:
-        session_key = f'viewed_tweet_{tweet.id}'
+        session_key = f"viewed_tweet_{tweet.id}"
         if not request.session.get(session_key, False):
-            Tweet.objects.filter(id=tweet.id).update(
-                view_count=F('view_count') + 1
-            )
+            Tweet.objects.filter(id=tweet.id).update(view_count=F("view_count") + 1)
             request.session[session_key] = True
-    
-    serializer = TweetSerializer(tweet, context={'request': request})
+
+    serializer = TweetSerializer(tweet, context={"request": request})
     return Response(serializer.data)
 
 
@@ -211,7 +201,7 @@ class TweetViewSet(viewsets.ModelViewSet):
     """
     ModelViewSet providing full CRUD for Tweet via DRF router with
     advanced filtering, searching, and pagination capabilities.
-    
+
     Supported Query Parameters:
     - search: Full-text search on tweet text and username
             Example: /api/tweets/?search=python
@@ -229,32 +219,33 @@ class TweetViewSet(viewsets.ModelViewSet):
             Example: /api/tweets/?page=2
     - page_size: Results per page (max 100)
                  Example: /api/tweets/?page_size=25
-    
+
     Combined Query Example:
     /api/tweets/?search=technology&user=1&ordering=-created_at&page=1&page_size=20
-    
+
     Permissions:
     - GET (list/retrieve): Public access - anyone can read
     - POST (create): Authenticated users only
     - PUT/PATCH (update): Authenticated user who owns the tweet
     - DELETE: Authenticated user who owns the tweet
     """
+
     queryset = Tweet.objects.all()
     pagination_class = TweetPagination
     permission_classes = [IsPublicReadOnlyOrAuthenticated]
-    
+
     # Filter backends for advanced querying
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    
+
     # Full-text search fields
-    search_fields = ['text', 'user__username']
-    
+    search_fields = ["text", "user__username"]
+
     # Filterset for structured filtering
     filterset_class = TweetFilterSet
-    
+
     # Default ordering
-    ordering_fields = ['created_at', 'likes_count']
-    ordering = ['-created_at']
+    ordering_fields = ["created_at", "likes_count"]
+    ordering = ["-created_at"]
 
     @method_decorator(cache_page(30))  # Cache feed for 30 seconds
     def list(self, request, *args, **kwargs):
@@ -266,23 +257,19 @@ class TweetViewSet(viewsets.ModelViewSet):
         Passes current user to query optimizer for SQL-level 'is_liked' status.
         """
         user = self.request.user if self.request else None
-        
-        if self.action == 'list':
+
+        if self.action == "list":
             queryset = OptimizedTweetQueries.get_tweets_for_list(user=user)
-        elif self.action == 'retrieve':
+        elif self.action == "retrieve":
             # Detail view now uses lightweight list query as comments are separate
             queryset = OptimizedTweetQueries.get_tweets_for_list(user=user)
         else:
-            queryset = (
-                Tweet.objects
-                .select_related('user')
-                .prefetch_related('likes')
-            )
-        
+            queryset = Tweet.objects.select_related("user").prefetch_related("likes")
+
         return queryset
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == "list":
             return TweetListSerializer
         return TweetSerializer
 
@@ -293,9 +280,9 @@ class TweetViewSet(viewsets.ModelViewSet):
         """
         # Automatically assign the authenticated user as the tweet owner
         instance = serializer.save(user=self.request.user)
-        
+
         # Handle optional photo upload
-        photo = self.request.FILES.get('photo')
+        photo = self.request.FILES.get("photo")
         if photo:
             try:
                 instance.photo_url = upload_to_supabase(photo)
@@ -314,12 +301,12 @@ class TweetViewSet(viewsets.ModelViewSet):
         # Defensive check - should be caught by permission class
         instance = self.get_object()
         if instance.user != self.request.user:
-            raise PermissionDenied('You do not have permission to edit this tweet.')
+            raise PermissionDenied("You do not have permission to edit this tweet.")
 
         updated = serializer.save()
-        
+
         # Handle optional photo replacement
-        photo = self.request.FILES.get('photo')
+        photo = self.request.FILES.get("photo")
         if photo:
             try:
                 # Delete old photo if present
@@ -339,8 +326,8 @@ class TweetViewSet(viewsets.ModelViewSet):
         """
         # Defensive check - should be caught by permission class
         if instance.user != self.request.user:
-            raise PermissionDenied('You do not have permission to delete this tweet.')
-        
+            raise PermissionDenied("You do not have permission to delete this tweet.")
+
         # Attempt to delete photo from storage, but don't block tweet deletion
         if instance.photo_url:
             try:
@@ -348,7 +335,7 @@ class TweetViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
+    @action(detail=True, methods=["get"], permission_classes=[AllowAny])
     def comments(self, request, pk=None):
         """
         Dedicated endpoint for paginated tweet comments.
@@ -356,7 +343,7 @@ class TweetViewSet(viewsets.ModelViewSet):
         """
         tweet = self.get_object()
         queryset = OptimizedCommentQueries.get_comments_for_tweet(tweet.id)
-        
+
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = CommentSerializer(page, many=True)
@@ -364,10 +351,8 @@ class TweetViewSet(viewsets.ModelViewSet):
 
         serializer = CommentSerializer(queryset, many=True)
         return Response(serializer.data)
-        
-        instance.delete()
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
         """Toggle like for the authenticated user on this tweet."""
         tweet = self.get_object()
@@ -378,7 +363,7 @@ class TweetViewSet(viewsets.ModelViewSet):
         else:
             tweet.likes.add(user)
             liked = True
-        return Response({'success': True, 'liked': liked, 'count': tweet.likes.count()})
+        return Response({"success": True, "liked": liked, "count": tweet.likes.count()})
 
 
 def tweet_detail(request, tweet_id):
@@ -386,64 +371,68 @@ def tweet_detail(request, tweet_id):
     Web view for a single tweet detail page.
     """
     tweet = get_object_or_404(
-        Tweet.objects.select_related('user').prefetch_related(
-            'likes',
+        Tweet.objects.select_related("user").prefetch_related(
+            "likes",
             Prefetch(
-                'comments',
-                queryset=Comment.objects.select_related('user').prefetch_related(
-                    'replies__user'
-                ).order_by('created_at')
+                "comments",
+                queryset=Comment.objects.select_related("user")
+                .prefetch_related("replies__user")
+                .order_by("created_at"),
             ),
         ),
-        pk=tweet_id
+        pk=tweet_id,
     )
-    
+
     # Increment view count for authenticated users
     if request.user.is_authenticated:
-        session_key = f'viewed_tweet_{tweet.id}'
+        session_key = f"viewed_tweet_{tweet.id}"
         if not request.session.get(session_key, False):
-            Tweet.objects.filter(id=tweet.id).update(
-                view_count=F('view_count') + 1
-            )
+            Tweet.objects.filter(id=tweet.id).update(view_count=F("view_count") + 1)
             request.session[session_key] = True
-            tweet.view_count += 1 # Update local instance for immediate display
+            tweet.view_count += 1  # Update local instance for immediate display
 
-    return render(request, 'tweet_detail.html', {'tweet': tweet})
-
+    return render(request, "tweet_detail.html", {"tweet": tweet})
 
 
 # ─────────────────────────────────────────────────────────────
 #  Public views
 # ─────────────────────────────────────────────────────────────
 
+
 def index(request):
-    return redirect('tweet_list')
+    return redirect("tweet_list")
 
 
 def tweet_list(request):
-    query = request.GET.get('q', '').strip()
+    query = request.GET.get("q", "").strip()
 
     # ──────────────────────────────────────────────────────────
     # OPTIMIZE: Use select_related + prefetch_related for efficient loading
     # Fetch only needed fields with only() and defer() for further optimization
     # ──────────────────────────────────────────────────────────
-    
+
     comments_qs = (
-        Comment.objects
-        .select_related('user')
-        .prefetch_related('replies__user')
-        .only('id', 'text', 'created_at', 'user__username', 'user__id', 'tweet_id')
+        Comment.objects.select_related("user")
+        .prefetch_related("replies__user")
+        .only("id", "text", "created_at", "user__username", "user__id", "tweet_id")
     )
-    
+
     base_qs = (
-        Tweet.objects
-        .select_related('user')
+        Tweet.objects.select_related("user")
         .prefetch_related(
-            'likes',
-            Prefetch('comments', queryset=comments_qs),
+            "likes",
+            Prefetch("comments", queryset=comments_qs),
         )
-        .only('id', 'user__id', 'user__username', 'text', 'photo_url', 'created_at', 'view_count')
-        .order_by('-created_at')
+        .only(
+            "id",
+            "user__id",
+            "user__username",
+            "text",
+            "photo_url",
+            "created_at",
+            "view_count",
+        )
+        .order_by("-created_at")
     )
 
     if query:
@@ -452,7 +441,7 @@ def tweet_list(request):
         tweets_list = base_qs
 
     paginator = Paginator(tweets_list, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     tweets = paginator.get_page(page_number)
 
     # ──────────────────────────────────────────────────────────
@@ -463,76 +452,89 @@ def tweet_list(request):
         # Collect viewed tweets to minimize database writes
         tweet_ids_to_update = []
         for tweet in tweets:
-            session_key = f'viewed_tweet_{tweet.id}'
+            session_key = f"viewed_tweet_{tweet.id}"
             if not request.session.get(session_key, False):
                 tweet_ids_to_update.append(tweet.id)
                 request.session[session_key] = True
-        
+
         # Batch update view counts with a single query
         if tweet_ids_to_update:
             Tweet.objects.filter(id__in=tweet_ids_to_update).update(
-                view_count=F('view_count') + 1
+                view_count=F("view_count") + 1
             )
 
-    return render(request, 'tweet_list.html', {
-        'tweets': tweets,
-        'query': query,
-    })
+    return render(
+        request,
+        "tweet_list.html",
+        {
+            "tweets": tweets,
+            "query": query,
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────
 #  Tweet CRUD
 # ─────────────────────────────────────────────────────────────
 
-@ratelimit(key='user', rate='10/h', block=True)
+
+@ratelimit(key="user", rate="10/h", block=True)
 @login_required
 def tweet_create(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = TweetForm(request.POST, request.FILES)
         if form.is_valid():
             tweet = form.save(commit=False)
             tweet.user = request.user
 
-            photo = form.cleaned_data.get('photo')
+            photo = form.cleaned_data.get("photo")
             if photo:
                 try:
                     tweet.photo_url = upload_to_supabase(photo)
                 except ValidationError as exc:
                     # Handle Django ValidationError properly
-                    if hasattr(exc, 'message'):
+                    if hasattr(exc, "message"):
                         error_msg = exc.message
-                    elif hasattr(exc, 'messages') and exc.messages:
-                        error_msg = exc.messages[0] if isinstance(exc.messages, list) else str(exc.messages)
+                    elif hasattr(exc, "messages") and exc.messages:
+                        error_msg = (
+                            exc.messages[0]
+                            if isinstance(exc.messages, list)
+                            else str(exc.messages)
+                        )
                     else:
                         error_msg = str(exc)
                     messages.error(request, error_msg)
-                    return render(request, 'tweet_form.html', {'form': form, 'action': 'create'})
+                    return render(
+                        request, "tweet_form.html", {"form": form, "action": "create"}
+                    )
                 except Exception:
                     messages.error(
                         request,
-                        'Image upload failed due to a network error. Please try again.'
+                        "Image upload failed due to a network error. Please try again.",
                     )
-                    return render(request, 'tweet_form.html', {'form': form, 'action': 'create'})
+                    return render(
+                        request, "tweet_form.html", {"form": form, "action": "create"}
+                    )
 
             tweet.save()
-            messages.success(request, 'Tweet posted successfully! 🎉')
-            return redirect('tweet_list')
+            messages.success(request, "Tweet posted successfully! 🎉")
+            return redirect("tweet_list")
     else:
         form = TweetForm()
 
-    return render(request, 'tweet_form.html', {'form': form, 'action': 'create'})
+    return render(request, "tweet_form.html", {"form": form, "action": "create"})
 
 
 @login_required
 def edit_tweet(request, tweet_id):
     tweet = get_object_or_404(Tweet, pk=tweet_id, user=request.user)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = TweetForm(request.POST, request.FILES, instance=tweet)
         if form.is_valid():
             updated_tweet = form.save(commit=False)
 
-            photo = form.cleaned_data.get('photo')
+            photo = form.cleaned_data.get("photo")
             if photo:
                 try:
                     # Delete the old image from Supabase before uploading the new one
@@ -541,116 +543,133 @@ def edit_tweet(request, tweet_id):
                     updated_tweet.photo_url = upload_to_supabase(photo)
                 except ValidationError as exc:
                     # Handle Django ValidationError properly
-                    if hasattr(exc, 'message'):
+                    if hasattr(exc, "message"):
                         error_msg = exc.message
-                    elif hasattr(exc, 'messages') and exc.messages:
-                        error_msg = exc.messages[0] if isinstance(exc.messages, list) else str(exc.messages)
+                    elif hasattr(exc, "messages") and exc.messages:
+                        error_msg = (
+                            exc.messages[0]
+                            if isinstance(exc.messages, list)
+                            else str(exc.messages)
+                        )
                     else:
                         error_msg = str(exc)
                     messages.error(request, error_msg)
-                    return render(request, 'tweet_form.html', {
-                        'form': form,
-                        'tweet': tweet,
-                        'action': 'edit',
-                    })
+                    return render(
+                        request,
+                        "tweet_form.html",
+                        {
+                            "form": form,
+                            "tweet": tweet,
+                            "action": "edit",
+                        },
+                    )
                 except Exception:
                     messages.error(
                         request,
-                        'Image upload failed due to a network error. The tweet text was not saved. Please try again.'
+                        "Image upload failed due to a network error. The tweet text was not saved. Please try again.",
                     )
-                    return render(request, 'tweet_form.html', {
-                        'form': form,
-                        'tweet': tweet,
-                        'action': 'edit',
-                    })
+                    return render(
+                        request,
+                        "tweet_form.html",
+                        {
+                            "form": form,
+                            "tweet": tweet,
+                            "action": "edit",
+                        },
+                    )
 
             updated_tweet.save()
-            messages.success(request, 'Tweet updated successfully! ✅')
-            return redirect('tweet_list')
+            messages.success(request, "Tweet updated successfully! ✅")
+            return redirect("tweet_list")
     else:
         form = TweetForm(instance=tweet)
 
-    return render(request, 'tweet_form.html', {
-        'form': form,
-        'tweet': tweet,
-        'action': 'edit',
-    })
+    return render(
+        request,
+        "tweet_form.html",
+        {
+            "form": form,
+            "tweet": tweet,
+            "action": "edit",
+        },
+    )
 
 
 @login_required
 def tweet_delete(request, tweet_id):
     tweet = get_object_or_404(Tweet, pk=tweet_id, user=request.user)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         if tweet.photo_url:
             try:
                 delete_from_supabase(tweet.photo_url)
             except Exception:
                 pass  # Don't block deletion even if Storage cleanup fails
         tweet.delete()
-        messages.success(request, 'Tweet deleted.')
-        return redirect('tweet_list')
+        messages.success(request, "Tweet deleted.")
+        return redirect("tweet_list")
 
-    return render(request, 'tweet_confirm_delete.html', {'tweet': tweet})
+    return render(request, "tweet_confirm_delete.html", {"tweet": tweet})
 
 
 # ─────────────────────────────────────────────────────────────
 #  Auth
 # ─────────────────────────────────────────────────────────────
 
-@ratelimit(key='ip', rate='3/h', block=True)
+
+@ratelimit(key="ip", rate="3/h", block=True)
 def register(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            messages.success(request, f'Welcome to Tweetbar, @{user.username}! 🚀')
-            return redirect('tweet_list')
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            messages.success(request, f"Welcome to Tweetbar, @{user.username}! 🚀")
+            return redirect("tweet_list")
     else:
         form = UserRegistrationForm()
-    return render(request, 'registration/register.html', {'form': form})
+    return render(request, "registration/register.html", {"form": form})
 
 
 # ─────────────────────────────────────────────────────────────
 #  Social interactions
 # ─────────────────────────────────────────────────────────────
 
-@ratelimit(key='user', rate='30/h', block=True)
+
+@ratelimit(key="user", rate="30/h", block=True)
 @login_required
 def tweet_like(request, tweet_id):
     """Toggle like status for a tweet. Returns JSON for AJAX requests."""
     try:
         tweet = get_object_or_404(Tweet, id=tweet_id)
-        
+
         if tweet.likes.filter(id=request.user.id).exists():
             tweet.likes.remove(request.user)
             liked = False
         else:
             tweet.likes.add(request.user)
             liked = True
-        
+
         # AJAX-friendly: always return JSON for AJAX requests
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'liked': liked,
-                'count': tweet.likes.count(),
-            })
-        return redirect('tweet_list')
-    
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "success": True,
+                    "liked": liked,
+                    "count": tweet.likes.count(),
+                }
+            )
+        return redirect("tweet_list")
+
     except Exception as e:
         # Return JSON error for AJAX requests
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse(
-                {'success': False, 'error': str(e)},
-                status=500
-            )
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
         # Otherwise, re-raise the exception to trigger 500 page
         raise
 
 
-@ratelimit(key='user', rate='20/h', block=True)
+@ratelimit(key="user", rate="20/h", block=True)
 @login_required
 def add_comment(request, tweet_id):
     """
@@ -659,187 +678,216 @@ def add_comment(request, tweet_id):
     """
     try:
         tweet = get_object_or_404(Tweet, id=tweet_id)
-        if request.method == 'POST':
+        if request.method == "POST":
             form = CommentForm(request.POST)
             if form.is_valid():
                 comment = form.save(commit=False)
                 comment.tweet = tweet
                 comment.user = request.user
-                
+
                 # Handle replies (nested comments)
-                parent_id = request.POST.get('parent_id')
+                parent_id = request.POST.get("parent_id")
                 if parent_id:
                     try:
                         parent = Comment.objects.get(id=parent_id, tweet=tweet)
                         comment.parent = parent
                     except Comment.DoesNotExist:
                         pass
-                
+
                 comment.save()
-                messages.success(request, 'Comment added! 💬')
+                messages.success(request, "Comment added! 💬")
 
                 # Create notification for tweet author if comment is by another user
                 if request.user != tweet.user:
-                    notification_type = 'reply' if comment.parent else 'comment'
+                    notification_type = "reply" if comment.parent else "comment"
                     Notification.objects.create(
                         user=tweet.user,
                         comment=comment,
                         notification_type=notification_type,
                     )
-                
+
                 # Create notification for parent comment author (if reply)
                 if comment.parent and request.user != comment.parent.user:
                     Notification.objects.create(
                         user=comment.parent.user,
                         comment=comment,
-                        notification_type='reply',
+                        notification_type="reply",
                     )
 
                 # AJAX-friendly response
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'username': comment.user.username,
-                        'text': comment.text,
-                        'count': tweet.comments.count(),
-                        'comment_id': comment.id,
-                    })
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {
+                            "success": True,
+                            "username": comment.user.username,
+                            "text": comment.text,
+                            "count": tweet.comments.count(),
+                            "comment_id": comment.id,
+                        }
+                    )
     except Exception as e:
         # Return JSON error for AJAX requests
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse(
-                {'success': False, 'error': str(e)},
-                status=500
-            )
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
         # Otherwise, re-raise the exception
         raise
-    
-    return redirect('tweet_list')
+
+    return redirect("tweet_list")
 
 
 # ─────────────────────────────────────────────────────────────
 #  Profile
 # ─────────────────────────────────────────────────────────────
 
+
 def user_profile(request, username):
     profile_user = get_object_or_404(User, username=username)
-    
+
     # OPTIMIZE: Use select_related + prefetch_related efficiently
     tweets_list = (
-        Tweet.objects
-        .filter(user=profile_user)
-        .select_related('user')
+        Tweet.objects.filter(user=profile_user)
+        .select_related("user")
         .prefetch_related(
             Prefetch(
-                'comments',
-                queryset=Comment.objects.select_related('user').prefetch_related('replies__user')
+                "comments",
+                queryset=Comment.objects.select_related("user").prefetch_related(
+                    "replies__user"
+                ),
             ),
-            'likes'
+            "likes",
         )
-        .only('id', 'user_id', 'user__username', 'text', 'photo_url', 
-              'created_at', 'view_count', 'updated_at')
-        .order_by('-created_at')
+        .only(
+            "id",
+            "user_id",
+            "user__username",
+            "text",
+            "photo_url",
+            "created_at",
+            "view_count",
+            "updated_at",
+        )
+        .order_by("-created_at")
     )
     paginator = Paginator(tweets_list, 10)
-    tweets = paginator.get_page(request.GET.get('page'))
+    tweets = paginator.get_page(request.GET.get("page"))
 
-    return render(request, 'profile.html', {
-        'profile_user': profile_user,
-        'tweets': tweets,
-    })
+    return render(
+        request,
+        "profile.html",
+        {
+            "profile_user": profile_user,
+            "tweets": tweets,
+        },
+    )
+
 
 # ─────────────────────────────────────────────────────────────
 #  Admin Dashboard (superuser only)
 # ─────────────────────────────────────────────────────────────
 
+
 @staff_member_required
 def admin_dashboard(request):
     """Admin dashboard with cached statistics. Staff-only access."""
     if not request.user.is_superuser:
-        return HttpResponseForbidden('Access denied.')
+        return HttpResponseForbidden("Access denied.")
 
     # OPTIMIZE: Cache expensive statistics for 1 hour to prevent timeout on Vercel
-    cache_key = 'admin_dashboard_stats'
+    cache_key = "admin_dashboard_stats"
     stats = cache.get(cache_key)
-    
+
     if stats is None:
         try:
             stats = {
-                'total_users':    User.objects.count(),
-                'total_tweets':   Tweet.objects.count(),
-                'total_comments': Comment.objects.count(),
-                'total_likes':    Tweet.objects.aggregate(n=Count('likes', distinct=True))['n'] or 0,
-                'active_users':   User.objects.filter(is_active=True).count(),
-                'staff_users':    User.objects.filter(is_staff=True).count(),
+                "total_users": User.objects.count(),
+                "total_tweets": Tweet.objects.count(),
+                "total_comments": Comment.objects.count(),
+                "total_likes": Tweet.objects.aggregate(n=Count("likes", distinct=True))[
+                    "n"
+                ]
+                or 0,
+                "active_users": User.objects.filter(is_active=True).count(),
+                "staff_users": User.objects.filter(is_staff=True).count(),
             }
             # Cache for 1 hour (3600 seconds)
             cache.set(cache_key, stats, 3600)
-        except Exception as e:
+        except Exception:
             # Fallback if query fails (e.g., database timeout)
             stats = {
-                'total_users': 0,
-                'total_tweets': 0,
-                'total_comments': 0,
-                'total_likes': 0,
-                'active_users': 0,
-                'staff_users': 0,
-                'error': 'Failed to load statistics'
+                "total_users": 0,
+                "total_tweets": 0,
+                "total_comments": 0,
+                "total_likes": 0,
+                "active_users": 0,
+                "staff_users": 0,
+                "error": "Failed to load statistics",
             }
 
     # OPTIMIZE: Cache top users for 30 minutes (less frequently accessed)
-    top_users_cache_key = 'admin_dashboard_top_users'
+    top_users_cache_key = "admin_dashboard_top_users"
     top_users = cache.get(top_users_cache_key)
-    
+
     if top_users is None:
         try:
             top_users = (
-                User.objects
-                .annotate(tweet_count=Count('tweet_set'))
-                .only('id', 'username', 'email')
-                .order_by('-tweet_count')[:5]
+                User.objects.annotate(tweet_count=Count("tweet_set"))
+                .only("id", "username", "email")
+                .order_by("-tweet_count")[:5]
             )
             # Convert to list to cache properly
             top_users = list(top_users)
             cache.set(top_users_cache_key, top_users, 1800)  # 30 minutes
-        except Exception as e:
+        except Exception:
             top_users = []
 
     # Recent data is not cached (always fresh) - with error handling
     try:
         recent_tweets = (
-            Tweet.objects
-            .select_related('user')
-            .prefetch_related('likes', 'comments')
-            .only('id', 'user_id', 'user__username', 'text', 'created_at', 'view_count')
-            .order_by('-created_at')[:10]
+            Tweet.objects.select_related("user")
+            .prefetch_related("likes", "comments")
+            .only("id", "user_id", "user__username", "text", "created_at", "view_count")
+            .order_by("-created_at")[:10]
         )
-        recent_users = User.objects.only('id', 'username', 'email', 'date_joined').order_by('-date_joined')[:5]
-    except Exception as e:
+        recent_users = User.objects.only(
+            "id", "username", "email", "date_joined"
+        ).order_by("-date_joined")[:5]
+    except Exception:
         recent_tweets = []
         recent_users = []
 
-    return render(request, 'admin_dashboard.html', {
-        'stats':         stats,
-        'recent_tweets': recent_tweets,
-        'recent_users':  recent_users,
-        'top_users':     top_users,
-    })
+    return render(
+        request,
+        "admin_dashboard.html",
+        {
+            "stats": stats,
+            "recent_tweets": recent_tweets,
+            "recent_users": recent_users,
+            "top_users": top_users,
+        },
+    )
 
 
 @staff_member_required
 def admin_users(request):
     if not request.user.is_superuser:
-        return HttpResponseForbidden('Access denied.')
+        return HttpResponseForbidden("Access denied.")
 
-    query = request.GET.get('q', '').strip()
-    role_filter = request.GET.get('role', '')
+    query = request.GET.get("q", "").strip()
+    role_filter = request.GET.get("role", "")
 
     # OPTIMIZE: Use only() to select specific fields
     users_list = (
-        User.objects
-        .annotate(tweet_count=Count('tweet'))
-        .only('id', 'username', 'email', 'is_superuser', 'is_staff', 'is_active', 'date_joined')
-        .order_by('-date_joined')
+        User.objects.annotate(tweet_count=Count("tweet"))
+        .only(
+            "id",
+            "username",
+            "email",
+            "is_superuser",
+            "is_staff",
+            "is_active",
+            "date_joined",
+        )
+        .order_by("-date_joined")
     )
 
     if query:
@@ -847,65 +895,74 @@ def admin_users(request):
             Q(username__icontains=query) | Q(email__icontains=query)
         )
 
-    if role_filter == 'superuser':
+    if role_filter == "superuser":
         users_list = users_list.filter(is_superuser=True)
-    elif role_filter == 'staff':
+    elif role_filter == "staff":
         users_list = users_list.filter(is_staff=True, is_superuser=False)
-    elif role_filter == 'user':
+    elif role_filter == "user":
         users_list = users_list.filter(is_staff=False, is_superuser=False)
 
     paginator = Paginator(users_list, 20)
-    users = paginator.get_page(request.GET.get('page'))
+    users = paginator.get_page(request.GET.get("page"))
 
-    return render(request, 'admin_users.html', {
-        'users':       users,
-        'query':       query,
-        'role_filter': role_filter,
-        'total_count': users_list.count(),
-    })
+    return render(
+        request,
+        "admin_users.html",
+        {
+            "users": users,
+            "query": query,
+            "role_filter": role_filter,
+            "total_count": users_list.count(),
+        },
+    )
 
 
 @staff_member_required
 def admin_user_delete(request, user_id):
     if not request.user.is_superuser:
-        return HttpResponseForbidden('Access denied.')
+        return HttpResponseForbidden("Access denied.")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         user_to_delete = get_object_or_404(User, pk=user_id)
         if user_to_delete.is_superuser:
-            messages.error(request, 'Cannot delete a superuser account.')
+            messages.error(request, "Cannot delete a superuser account.")
         else:
             username = user_to_delete.username
             user_to_delete.delete()
-            messages.success(request, f'User @{username} has been permanently deleted.')
-    return redirect('admin_users')
+            messages.success(request, f"User @{username} has been permanently deleted.")
+    return redirect("admin_users")
 
 
 @staff_member_required
 def admin_reset_password(request, user_id):
     if not request.user.is_superuser:
-        return HttpResponseForbidden('Access denied.')
+        return HttpResponseForbidden("Access denied.")
 
     user_to_reset = get_object_or_404(User, pk=user_id)
-    if request.method == 'POST':
+    if request.method == "POST":
         new_password = secrets.token_urlsafe(12)
         user_to_reset.set_password(new_password)
         user_to_reset.save()
         messages.success(
             request,
-            f'Password reset for @{user_to_reset.username}. '
-            f'New temporary password: {new_password}'
+            f"Password reset for @{user_to_reset.username}. "
+            f"New temporary password: {new_password}",
         )
-        return redirect('admin_users')
+        return redirect("admin_users")
 
-    return render(request, 'admin_reset_password_confirm.html', {
-        'user_to_reset': user_to_reset,
-    })
+    return render(
+        request,
+        "admin_reset_password_confirm.html",
+        {
+            "user_to_reset": user_to_reset,
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────
 #  Notifications
 # ─────────────────────────────────────────────────────────────
+
 
 @login_required
 def notifications(request):
@@ -915,31 +972,33 @@ def notifications(request):
     """
     # OPTIMIZE: select_related instead of multiple queries
     notifications_list = (
-        Notification.objects
-        .filter(user=request.user)
-        .select_related('comment__user', 'comment__tweet')
-        .order_by('-created_at')
+        Notification.objects.filter(user=request.user)
+        .select_related("comment__user", "comment__tweet")
+        .order_by("-created_at")
     )
-    
+
     paginator = Paginator(notifications_list, 15)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     notifications_page = paginator.get_page(page_number)
-    
+
     # OPTIMIZE: Cache unread count for this user (invalidated when marking as read)
-    unread_cache_key = f'notifications_unread_{request.user.id}'
+    unread_cache_key = f"notifications_unread_{request.user.id}"
     unread_count = cache.get(unread_cache_key)
-    
+
     if unread_count is None:
         unread_count = Notification.objects.filter(
-            user=request.user,
-            is_read=False
+            user=request.user, is_read=False
         ).count()
         cache.set(unread_cache_key, unread_count, 300)  # Cache for 5 minutes
-    
-    return render(request, 'notifications.html', {
-        'notifications': notifications_page,
-        'unread_count': unread_count,
-    })
+
+    return render(
+        request,
+        "notifications.html",
+        {
+            "notifications": notifications_page,
+            "unread_count": unread_count,
+        },
+    )
 
 
 @login_required
@@ -948,23 +1007,26 @@ def mark_notification_as_read(request, notification_id):
     Mark a single notification as read (AJAX endpoint).
     Invalidates cache for unread count.
     """
-    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    notification = get_object_or_404(
+        Notification, id=notification_id, user=request.user
+    )
     notification.is_read = True
     notification.save()
-    
+
     # OPTIMIZE: Invalidate cache when notification is marked as read
-    unread_cache_key = f'notifications_unread_{request.user.id}'
+    unread_cache_key = f"notifications_unread_{request.user.id}"
     cache.delete(unread_cache_key)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'unread_count': Notification.objects.filter(
-                user=request.user,
-                is_read=False
-            ).count(),
-        })
-    return redirect('notifications')
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse(
+            {
+                "success": True,
+                "unread_count": Notification.objects.filter(
+                    user=request.user, is_read=False
+                ).count(),
+            }
+        )
+    return redirect("notifications")
 
 
 @login_required
@@ -974,14 +1036,14 @@ def mark_all_notifications_as_read(request):
     Invalidates cache for unread count.
     """
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-    
+
     # OPTIMIZE: Invalidate cache when notifications are marked as read
-    unread_cache_key = f'notifications_unread_{request.user.id}'
+    unread_cache_key = f"notifications_unread_{request.user.id}"
     cache.delete(unread_cache_key)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({'success': True})
-    return redirect('notifications')
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"success": True})
+    return redirect("notifications")
 
 
 @login_required
@@ -991,14 +1053,11 @@ def unread_notification_count(request):
     Uses cache for performance.
     """
     # OPTIMIZE: Use cache for frequently accessed unread count
-    unread_cache_key = f'notifications_unread_{request.user.id}'
+    unread_cache_key = f"notifications_unread_{request.user.id}"
     count = cache.get(unread_cache_key)
-    
+
     if count is None:
-        count = Notification.objects.filter(
-            user=request.user,
-            is_read=False
-        ).count()
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
         cache.set(unread_cache_key, count, 300)  # Cache for 5 minutes
-    
-    return JsonResponse({'count': count})
+
+    return JsonResponse({"count": count})
