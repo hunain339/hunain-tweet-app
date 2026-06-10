@@ -7,17 +7,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tweet', '0002_tweet_likes_comment'),
+        ("tweet", "0002_tweet_likes_comment"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='tweet',
-            name='photo',
+            model_name="tweet",
+            name="photo",
         ),
         migrations.AddField(
-            model_name='tweet',
-            name='photo_url',
-            field=models.URLField(blank=True, null=True, validators=[django.core.validators.URLValidator()]),
+            model_name="tweet",
+            name="photo_url",
+            field=models.URLField(
+                blank=True,
+                null=True,
+                validators=[django.core.validators.URLValidator()],
+            ),
         ),
     ]

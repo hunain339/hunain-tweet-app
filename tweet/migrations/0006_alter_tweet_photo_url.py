@@ -7,13 +7,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tweet', '0005_alter_comment_text_alter_tweet_text'),
+        ("tweet", "0005_alter_comment_text_alter_tweet_text"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='tweet',
-            name='photo_url',
-            field=models.URLField(blank=True, max_length=500, null=True, validators=[django.core.validators.URLValidator()]),
+            model_name="tweet",
+            name="photo_url",
+            field=models.URLField(
+                blank=True,
+                max_length=500,
+                null=True,
+                validators=[django.core.validators.URLValidator()],
+            ),
         ),
     ]

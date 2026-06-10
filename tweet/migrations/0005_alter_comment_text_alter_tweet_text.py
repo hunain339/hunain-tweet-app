@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tweet', '0004_notification_alter_comment_options_and_more'),
+        ("tweet", "0004_notification_alter_comment_options_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='comment',
-            name='text',
+            model_name="comment",
+            name="text",
             field=models.TextField(max_length=500),
         ),
         migrations.AlterField(
-            model_name='tweet',
-            name='text',
+            model_name="tweet",
+            name="text",
             field=models.TextField(max_length=500),
         ),
     ]
