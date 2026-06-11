@@ -64,3 +64,4 @@ config/secrets*
 # Node modules (if using frontend tools)
 node_modules/
 npm-debug.log*
+# Ignore env files and node modules\n.env\n.env.*\nnode_modules/
