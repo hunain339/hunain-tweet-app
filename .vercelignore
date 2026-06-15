@@ -1,0 +1,51 @@
+# Ignore git and agent configs
+.git
+.github
+.agents
+.vercel
+.env.vercel
+
+# Python virtual envs
+sandbox_venv
+venv
+env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Node modules
+node_modules
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# Database files
+*.db
+*.sqlite3
+*.sql
+*.sql.gz
+*.dump
+
+# SSL certs
+certs
+*.crt
+*.key
+*.pem
+
+# Large/Temporary/Doc files
+*.bundle
+DEP_DEPS_PRUNE.md
+docs
+image.png
+*.log
+gunicorn.log
+server*.log
+gunicorn.log
+tests
+tests.py
+tests_*.py
+pytest.ini
