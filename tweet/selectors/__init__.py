@@ -5,5 +5,11 @@ from .tweet_selector import (
     OptimizedCommentQueries,
     AggregateStatistics,
 )
+from .notification_selector import NotificationSelector
 
-__all__ = ["OptimizedTweetQueries", "OptimizedCommentQueries", "AggregateStatistics"]
+__all__ = [
+    "OptimizedTweetQueries",
+    "OptimizedCommentQueries",
+    "AggregateStatistics",
+    "NotificationSelector",
+]

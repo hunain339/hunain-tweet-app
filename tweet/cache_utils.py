@@ -117,6 +117,18 @@ def invalidate_tweet_cache(tweet_id):
         # Invalidate popular/trending cache (since engagement changed)
         cache.delete("trending_tweets")
         cache.delete("popular_tweets")
+        # Invalidate common popular variants
+        for l in (5, 10, 20):
+            try:
+                cache.delete(f"popular_tweets:{l}")
+            except Exception:
+                pass
+
+        # Invalidate per-tweet stats cached under tweet_stats:{id}
+        try:
+            cache.delete(f"tweet_stats:{tweet_id}")
+        except Exception:
+            pass
 
         # Could also invalidate user-specific tweet list, but we don't
         # cache user lists by default due to rapid changes
@@ -136,6 +148,14 @@ def invalidate_user_cache(user_id):
         # Invalidate user tweet list cache
         user_list_key = get_cache_key("user_tweets", user_id)
         cache.delete(user_list_key)
+    except Exception:
+        pass
+
+
+def invalidate_user_unread_count(user_id):
+    """Invalidate unread notification count cache for a user."""
+    try:
+        cache.delete(f"user_unread_count:{user_id}")
     except Exception:
         pass
 
