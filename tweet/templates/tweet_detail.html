@@ -88,8 +88,8 @@
             <div class="d-flex align-items-center gap-3">
                 {% if user.is_authenticated %}
                 <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-4 py-3 like-btn {% if user in tweet.likes.all %}liked{% endif %}" 
-                        style="border-radius: 100px; border-color: var(--border-color); color: white;"
-                        data-tweet-id="{{ tweet.id }}" data-like-url="{% url 'tweet_like' tweet.id %}" data-csrf="{{ csrf_token }}">
+                        style="border-radius: 100px; border-color: var(--border-color); color: white; transition: transform 0.15s ease;"
+                        data-tweet-id="{{ tweet.id }}" data-liked="{% if user in tweet.likes.all %}true{% else %}false{% endif %}" data-csrf="{{ csrf_token }}">
                     <svg width="24" height="24" fill="{% if user in tweet.likes.all %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                     </svg>

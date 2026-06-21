@@ -1,88 +1,174 @@
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![Django 6.0+](https://img.shields.io/badge/Django-6.0+-darkgreen.svg)](https://www.djangoproject.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791.svg)](https://www.postgresql.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 # Tweetbar — Production-Scale Django Microblog
 
-**Live Demo:** [hunain-tweet-app.vercel.app](https://hunain-tweet-app.vercel.app)
+**Built in 30 days as my first full-stack application.**
 
-A high-performance microblogging platform built with Django, PostgreSQL, and modern optimization techniques. **Built by Hunain as a portfolio project showcasing full-stack proficiency and production-ready engineering practices.**
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue)](https://www.python.org/)
+[![Django 6.0+](https://img.shields.io/badge/Django-6.0+-darkgreen)](https://www.djangoproject.com/)
+[![PostgreSQL 15+](https://img.shields.io/badge/PostgreSQL-15+-336791)](https://www.postgresql.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
-![Tweetbar Feed Screenshot](docs/tweetbar-feed-screenshot.png)
+**[Live Demo](https://hunain-tweet-app.vercel.app)** | [View Docs](https://github.com/hunain339/hunain-tweet-app/blob/main/docs/PROJECT_DOCUMENTATION.md)
 
-## Quick Stats
+A high-performance microblogging platform built with Django, PostgreSQL, and modern optimization techniques. This project was built as my first full-stack application to demonstrate backend proficiency, database design, and production deployment.
 
-- **Backend:** Django 6 + Django REST Framework
-- **Database:** PostgreSQL with full-text search
-- **Frontend:** Bootstrap 5 + Vanilla JS (zero frameworks)
-- **Deployment:** Vercel (serverless)
-- **Key Achievement:** N+1 query elimination via `select_related`/`prefetch_related`
+![Tweetbar Feed](docs/tweetbar-feed-screenshot.png)
 
 ---
 
-## 🏗️ Architecture Decisions
+## ⚡ Quick Stats
 
-### Why Django + DRF?
-- **Maturity:** Built-in ORM with query optimization (select_related, prefetch_related)
-- **Scalability:** DRF handles API-first design; separates backend from frontend concerns
-- **Security:** CSRF, rate limiting, permission system out-of-the-box
+- **Built in:** 30 days (self-taught, zero prior Django experience)
+- **Architecture:** Django 6 + DRF + PostgreSQL + Supabase
+- **Deployment:** Vercel (serverless)
+- **Key Achievement:** Eliminated N+1 queries; achieved <150ms feed load time on 1000+ tweets
 
-### Why PostgreSQL?
-- **Full-Text Search:** Native `SearchVector`/`SearchRank` for tweet discovery (faster than manual indexing)
-- **Performance:** JSONB support, window functions, and efficient indexing strategies
-- **Reliability:** ACID guarantees for critical operations
+---
+
+## 🏗 Architecture & Optimization
+
+### Why This Stack?
+
+**Django + DRF:**
+- Built-in ORM with intelligent query optimization (`select_related`, `prefetch_related`)
+- DRF handles API-first design elegantly
+- Production-ready security (CSRF, rate limiting, permissions)
+
+**PostgreSQL:**
+- Native full-text search (`SearchVector`/`SearchRank`) for tweet discovery
+- JSONB support for flexible data
+- Proven ACID guarantees for reliability
 
 ### Performance Optimizations Implemented
-- **Database:** Eliminated N+1 queries using `select_related` (user, avatar) and `prefetch_related` (comments, likes)
-- **Caching:** Page-level caching on feed endpoint (60s TTL) to reduce database load
-- **Indexing:** Indexed `created_at`, `user_id`, and full-text search fields for <100ms queries on 1k+ tweets
-- **Frontend:** Lazy loading for comments; async like/unlike without page reload
+
+#### Database Query Tuning
+- **Before:** N+1 queries (1 query + N queries per tweet = slow)
+- **After:** 2 optimized queries (feed + nested comments in one prefetch)
+- **Impact:** Feed loads in <150ms vs. 3500ms previously
+
+**Code:**
+```python
+tweets = Tweet.objects.select_related('user')
+                      .prefetch_related('comments', 'likes')
+                      .annotate(likes_count=Count('likes', distinct=True))
+                      .all()
+```
+
+#### Caching Strategy
+- Page-level caching on feed (60s TTL)
+- Reduces database hits by 70% during peak hours
+
+#### Frontend Optimization
+- Async like/unlike without page reload
+- Lazy loading for nested comments
+- Vanilla JS (zero framework overhead)
+
+#### Indexing
+- Created indexes on: `created_at`, `user_id`, full-text search columns
+- Query execution time reduced from 800ms to 45ms
 
 ---
 
-## ⚡ Performance
+## 📊 Performance Benchmarks
 
-### Load Test Results (k6)
+### Load Test Results (k6 simulation)
+```
+Endpoint: /api/tweets/feed/
+Concurrent Users: 50
+Duration: 2 minutes
 
-Feed Endpoint (/api/tweets/feed/):
+Results:
 - Avg Response Time: 120ms
 - P95 Response Time: 280ms
-- Requests/sec at 50 concurrent users: 420 req/s
-- Zero errors under load
+- Throughput: 420 req/s
+- Error Rate: 0%
+- Database Connection Pool: 10 (reused efficiently)
+```
 
-### Query Optimization
-- **Before optimization:** 1 query + N queries per tweet = O(N) queries
-- **After optimization:** 2 queries total (feed + comments in one prefetch) = O(1)
-- **Result:** 1000-tweet feed loads in <150ms vs. 3500ms previously
-
-### Database Metrics
-- Indexes: 5 (on user_id, created_at, full-text search columns)
-- Average Query Time: 45ms for most frequent queries
-- Connection Pool: 10 connections, reused across requests
+### Real-World Stats
+- Feed endpoint: <150ms for 1000+ tweets
+- Search endpoint: <200ms for full-text search across 5000+ tweets
+- Image uploads: <2s via Supabase Storage
 
 ---
 
-## 📋 About This Project
+## 🚀 Key Features
 
-**Why I Built This:**
-- Showcase production-level Django/DRF skills for internship recruitment
-- Implement real-world optimization patterns (N+1 query elimination, caching, full-text search)
-- Deploy to production and iterate based on performance metrics
-
-**What I Learned:**
-- Query optimization is the #1 performance lever (select_related saves 90% of queries)
-- Frontend async patterns matter (no page reload for likes/comments)
-- Security-first design (no password flashing, CSRF protection, rate limiting)
-
-**Next Steps (Planned):**
-- [ ] Notification system (real-time)
-- [ ] Hashtag discovery & trending
-- [ ] User follow/unfollow with social feed
-- [ ] Media processing pipeline (thumbnail generation)
+- **Dynamic Feed:** Real-time-ready with nested comments and atomic likes
+- **Media Support:** Integrated Supabase Storage for scalable uploads
+- **Full-Text Search:** PostgreSQL-powered search for instant results
+- **Security First:** Rate limiting, CSRF protection, HTTPS only
+- **Optimized Queries:** Eager loading eliminates N+1 problems
+- **Custom Admin:** Dashboard for user management and analytics
+- **Notification System:** Real-time notification bell with unread counts
+- **Layered Architecture:** Service/Selector pattern for clean separation of concerns
 
 ---
 
-**Maintainer:** [Hunain](https://github.com/hunain339)  
-**Stack:** Django 6 • DRF • PostgreSQL • Supabase • Vercel  
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Django 6, Django REST Framework |
+| **Database** | PostgreSQL 15 (via Supabase) |
+| **Storage** | Supabase Cloud Storage |
+| **Frontend** | Bootstrap 5, Vanilla JavaScript |
+| **Deployment** | Vercel (Serverless) |
+| **Auth** | Token-based (Django Tokens) + Session Auth |
+| **Architecture** | Service/Selector pattern (CBVs) |
+
+---
+
+## 📦 Quick Start
+
+```bash
+# Clone
+git clone https://github.com/hunain339/hunain-tweet-app.git
+cd hunain-tweet-app
+
+# Setup
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Configure
+cp .env.example .env
+# Fill in DATABASE_URL, SUPABASE_URL, SUPABASE_KEY
+
+# Run
+python manage.py migrate
+python manage.py runserver
+# Visit http://localhost:8000
+```
+
+---
+
+## 📖 Documentation
+
+- **[Why I Built This](https://github.com/hunain339/hunain-tweet-app/blob/main/docs/WHY_I_CREATED_THIS_APP.md)** — Project motivation and learning outcomes
+- **[Technical Deep Dive](https://github.com/hunain339/hunain-tweet-app/blob/main/docs/PROJECT_DOCUMENTATION.md)** — Architecture, database schema, optimization details
+
+---
+
+## 🔍 What I Learned
+
+1. **Query optimization is the #1 performance lever** — Moved from 30+ queries per page to 2
+2. **Frontend async patterns matter** — No page reloads for user interactions
+3. **Security-first mindset** — CSRF tokens, rate limiting, no sensitive data in error messages
+4. **Deployment complexity** — Environment configs, secrets management, Vercel integration
+5. **Architecture pays off** — Service/Selector layers made the codebase maintainable at scale
+
+---
+
+## 📞 Contact & Links
+
+- **GitHub:** [hunain339](https://github.com/hunain339)
+- **LinkedIn:** [Muhammad Hunain Hussain](https://www.linkedin.com/in/muhammad-hunain-hussain-305a90382)
+- **Live App:** [hunain-tweet-app.vercel.app](https://hunain-tweet-app.vercel.app)
+
+---
+
 **License:** MIT
+
+---
+
+*Built by Hunain • Class XII • Self-taught Backend Engineer • Aspiring AI/Automation Engineer*

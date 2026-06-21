@@ -87,8 +87,8 @@
                 </div>
                 
                 {% if user.is_authenticated %}
-                <button class="action-btn like-btn" data-tweet-id="{{ tweet.id }}" data-liked="{% if user in tweet.likes.all %}true{% else %}false{% endif %}">
-                    <i class="heart-icon" style="font-style: normal; font-size: 1.2rem;">{% if user in tweet.likes.all %}♥️{% else %}♡{% endif %}</i>
+                <button class="action-btn like-btn" type="button" style="transition: transform 0.15s ease;" data-tweet-id="{{ tweet.id }}" data-liked="{% if user in tweet.likes.all %}true{% else %}false{% endif %}">
+                    <i class="heart-icon" style="font-style: normal; font-size: 1.2rem;">{% if user in tweet.likes.all %}♥{% else %}♡{% endif %}</i>
                     <span class="like-count">{{ tweet.likes.count }}</span>
                 </button>
                 {% else %}

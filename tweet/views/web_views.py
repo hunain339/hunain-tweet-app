@@ -1,3 +1,5 @@
+import logging
+
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView, FormView, View, RedirectView
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import redirect, render, get_object_or_404
@@ -15,6 +17,8 @@ from ..selectors.notification_selector import NotificationSelector
 from ..services.tweet_service import TweetService
 from ..services.comment_service import CommentService
 from ..services.notification_service import NotificationService
+
+logger = logging.getLogger(__name__)
 
 class IndexView(RedirectView):
     pattern_name = "tweet_list"
@@ -74,7 +78,8 @@ class TweetCreateView(LoginRequiredMixin, CreateView):
             messages.success(self.request, "Tweet posted successfully! 🎉")
             return redirect(reverse("tweet_list"))
         except Exception as e:
-            messages.error(self.request, f"Upload failed: {str(e)}")
+            logger.exception("Tweet creation failed for user %s", self.request.user.pk)
+            messages.error(self.request, "Something went wrong while posting your tweet. Please try again.")
             return self.form_invalid(form)
 
 
@@ -125,7 +130,8 @@ class TweetUpdateView(LoginRequiredMixin, TweetEditPermission, UpdateView):
             self.object = tweet
             return redirect(reverse("tweet_list"))
         except Exception as e:
-            messages.error(self.request, f"Update failed: {str(e)}")
+            logger.exception("Tweet update failed for tweet %s by user %s", self.get_object().pk, self.request.user.pk)
+            messages.error(self.request, "Something went wrong while updating your tweet. Please try again.")
             return self.form_invalid(form)
 
 
