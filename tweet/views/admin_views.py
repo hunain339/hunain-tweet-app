@@ -144,7 +144,7 @@ class AdminUserPasswordResetView(SuperuserRequiredMixin, View):
         user_to_reset.set_password(new_password)
         user_to_reset.save()
         messages.success(
-            request,
-            f"Password reset for @{user_to_reset.username}. New temporary password: {new_password}"
+            request, 
+            f"Password reset for @{user_to_reset.username} was successful."
         )
         return redirect("admin_users")
