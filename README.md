@@ -7,7 +7,7 @@
 [![PostgreSQL 15+](https://img.shields.io/badge/PostgreSQL-15+-336791)](https://www.postgresql.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
-**[Live Demo](https://hunain-tweet-app.vercel.app)** | [View Docs](https://github.com/hunain339/hunain-tweet-app/blob/main/docs/PROJECT_DOCUMENTATION.md)
+**[Live Demo](https://hunain-gujjar-tweet-prod.vercel.app/tweet/)** | [View Docs](https://github.com/hunain339/hunain-tweet-app/blob/main/docs/PROJECT_DOCUMENTATION.md)
 
 A high-performance microblogging platform built with Django, PostgreSQL, and modern optimization techniques. This project was built as my first full-stack application to demonstrate backend proficiency, database design, and production deployment.
 
@@ -163,7 +163,7 @@ python manage.py runserver
 
 - **GitHub:** [hunain339](https://github.com/hunain339)
 - **LinkedIn:** [Muhammad Hunain Hussain](https://www.linkedin.com/in/muhammad-hunain-hussain-305a90382)
-- **Live App:** [hunain-tweet-app.vercel.app](https://hunain-tweet-app.vercel.app)
+- **Live App:** [hunain-gujjar-tweet-prod.vercel.app](https://hunain-gujjar-tweet-prod.vercel.app/tweet/)
 
 ---
 
