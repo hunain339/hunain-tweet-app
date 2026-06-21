@@ -1,44 +1,63 @@
-# Tweetbar — Production-Scale Django Microblog
+# Tweetbar
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
-[![Django](https://img.shields.io/badge/Django-5.0+-green.svg)](https://www.djangoproject.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## Project Overview
+Tweetbar is a full-featured, modern social media platform built to demonstrate production-grade engineering principles. It allows users to authenticate, create tweets, upload images, search for content, and interact via likes and comments. The application is designed using a clean Service/Selector architecture to ensure scalability and maintainability.
 
-**Tweetbar** is a high-performance, production-ready microblogging platform. This project was built by **Hunain** as a first major application to showcase full-stack proficiency, scalability, and modern engineering practices for an internship.
+## Features
+- **Authentication:** Secure user registration, login, and session management.
+- **Tweet Creation:** Post text and media content.
+- **Image Uploads:** Seamless media storage powered by Supabase.
+- **Search:** Query tweets and users efficiently.
+- **Likes & Comments:** Interactive engagement system for user content.
 
-## 🚀 Key Features
-- **Dynamic Feed:** Real-time-ready feed with nested comments and likes.
-- **Media Support:** Integrated with **Supabase Storage** for scalable image uploads.
-- **Advanced Search:** Powered by **PostgreSQL Full-Text Search** for fast, relevant results.
-- **Security First:** Implements Rate Limiting, CSRF protection, and HTTPS enforcement.
-- **Optimized Performance:** Database queries are tuned with eager loading to prevent N+1 issues.
-- **Admin Suite:** Custom dashboard for user management and system analytics.
+## Tech Stack
+- **Backend:** Python, Django
+- **Database:** PostgreSQL
+- **Storage:** Supabase Storage
+- **Architecture:** Service/Selector pattern
 
-## 🛠 Tech Stack
-- **Backend:** Django 6 (Python)
-- **Database:** PostgreSQL (via Supabase)
-- **Storage:** Supabase Cloud Storage
-- **Frontend:** Bootstrap 5, Vanilla JS
-- **Deployment:** Vercel / Render
+## Installation
 
-## 📦 Quick Start
-1. **Clone & Setup:**
+1. **Clone the repository:**
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate
+   git clone https://github.com/yourusername/tweet-app.git
+   cd tweet-app
+   ```
+
+2. **Set up a virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+3. **Install dependencies:**
+   ```bash
    pip install -r requirements.txt
    ```
-2. **Environment:** Configure `.env` with your `DATABASE_URL` and `SUPABASE_*` keys.
-3. **Run:**
+
+4. **Environment Variables:**
+   Copy the example environment file and fill in your details:
+   ```bash
+   cp .env.example .env
+   ```
+   *Note: Ensure you have a Supabase project set up and provide the required keys in `.env`.*
+
+5. **Apply Migrations:**
    ```bash
    python manage.py migrate
+   ```
+
+6. **Run the Development Server:**
+   ```bash
    python manage.py runserver
    ```
 
-## 📖 Project Documentation
-For a deep dive into why this app was built and how it's structured, see:
-- [Why I Created This App](WHY_I_CREATED_THIS_APP.md)
-- [Project Documentation](PROJECT_DOCUMENTATION.md)
+## Deployment
+The application is structured to be deployed easily to modern platforms like Vercel or Render. 
+- Ensure `ALLOWED_HOSTS` is updated.
+- Use `gunicorn` for the WSGI server in production.
+- Static files are configured to use WhiteNoise.
+- Media files are handled remotely by Supabase.
 
----
-**Maintainer:** [Hunain](https://github.com/hunain339)
+## Screenshots
+*(Add screenshots or a GIF demonstration of the application in the `screenshots` folder.)*
