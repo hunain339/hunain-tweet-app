@@ -51,4 +51,21 @@ class Command(BaseCommand):
         self.stdout.write("Validating all comments now...")
         self.stdout.write(f"Remaining comments: {Comment.objects.count()}")
 
+        # Additional pass: remove global duplicate texts (keep earliest)
+        self.stdout.write("Scanning for global duplicate comment texts...")
+        text_duplicates = (
+            Comment.objects.values("text").annotate(count=Count("id")).filter(count__gt=1)
+        )
+        global_removed = 0
+        for td in text_duplicates:
+            comments = Comment.objects.filter(text=td["text"]).order_by("created_at")
+            keep = comments.first()
+            to_remove = comments.exclude(id=keep.id)
+            removed_count, _ = to_remove.delete()
+            global_removed += removed_count
+            self.stdout.write(f"Removed {removed_count} global duplicate comments for text='{td['text'][:40]}'")
+
+        if global_removed:
+            self.stdout.write(f"Removed {global_removed} global duplicate comment rows.")
+
         self.stdout.write("Seed cleanup complete.")

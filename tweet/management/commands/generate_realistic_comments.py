@@ -39,12 +39,33 @@ class Command(BaseCommand):
                 continue
 
             needed = 3 - comment_count
+            # Sample comments without replacement to avoid creating duplicate texts
+            available_samples = [s for s in self.SAMPLE_COMMENTS if not Comment.objects.filter(text=s).exists()]
+            if not available_samples:
+                # Nothing unique left to add
+                continue
+
             for _ in range(needed):
-                Comment.objects.create(
+                # Refresh available samples each iteration
+                available_samples = [s for s in available_samples if not Comment.objects.filter(text=s).exists()]
+                if not available_samples:
+                    break
+
+                chosen_text = random.choice(available_samples)
+                chosen_user = random.choice(users)
+
+                # Use get_or_create to avoid duplicate rows for the same (tweet, user, text)
+                obj, created_flag = Comment.objects.get_or_create(
                     tweet=tweet,
-                    user=random.choice(users),
-                    text=random.choice(self.SAMPLE_COMMENTS),
+                    user=chosen_user,
+                    text=chosen_text,
                 )
-                created += 1
+                if created_flag:
+                    created += 1
+                # Remove chosen_text from available_samples to avoid reuse in this run
+                try:
+                    available_samples.remove(chosen_text)
+                except ValueError:
+                    pass
 
         self.stdout.write(self.style.SUCCESS(f"Created {created} realistic comments."))
